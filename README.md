@@ -1,13 +1,29 @@
 ###🏰 ClanCrest
-A visual family tree builder that helps you map your family’s lineage using a clean drag-and-drop interface. Supports defining relationships, multilingual metadata (including Chinese names), and an interactive "Who Am I to You?" feature that displays kinship terms in English and Mandarin.
+A visual family tree builder that helps you map your family's lineage using a clean drag-and-drop interface. Supports defining relationships, multilingual metadata (including Chinese names), and an interactive "Who Am I to You?" feature that displays kinship terms in English and Mandarin.
 
 ##Tech Stack
 Frontend: React + Vite + Tailwind CSS + React Flow
 Backend: Node.js + Express
 ORM: Prisma
-Database: Prisma with PostgreSQL
+Database: SQLite (local development) / PostgreSQL (production)
 Auth: Google OAuth 2.0 (via Clerk or @react-oauth/google, optional)
 Hosting: Vercel (frontend), Railway (backend + DB)
+
+##Development Setup
+
+1. Clone the repository
+2. Install dependencies:
+   ```bash
+   cd frontend && npm install
+   cd ../backend && npm install
+   ```
+3. Database setup:
+   - Local development uses SQLite (no setup required)
+   - Production will use PostgreSQL (configuration via DATABASE_URL)
+   ```bash
+   cd backend
+   npx prisma migrate dev
+   ```
 
 ##Features
 ✅ Build a family tree with draggable nodes
@@ -31,7 +47,9 @@ clancrest/
 ├── backend/
 │   ├── .env                       # Backend env variables
 │   ├── prisma/
-│   │   └── schema.prisma           # Prisma DB schema
+│   │   ├── schema.prisma          # Prisma DB schema
+│   │   ├── dev.db                 # SQLite database (local development)
+│   │   └── migrations/            # Database migrations
 │   ├── src/
 │   │   ├── controllers/
 │   │   │   ├── personController.js
