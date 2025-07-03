@@ -1,25 +1,39 @@
 # Dependencies
 node_modules/
+/frontend/node_modules/
+/backend/node_modules/
 
 # Environment files
 .env
-frontend/.env
-backend/.env
+.env.*
+!.env.example
+/frontend/.env
+/frontend/.env.*
+!/frontend/.env.example
+/backend/.env
+/backend/.env.*
+!/backend/.env.example
 
 # Build outputs
-dist/
-build/
+/dist/
+/build/
+/frontend/dist/
+/frontend/dist-ssr/
+/backend/dist/
 *.local
 
 # Logs
-logs/
+/logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
+yarn-error.log*
 pnpm-debug.log*
+lerna-debug.log*
 
 # Editor + system
-.vscode/
+.vscode/*
+!.vscode/extensions.json
 .idea/
 .DS_Store
 *.suo
@@ -27,13 +41,53 @@ pnpm-debug.log*
 *.njsproj
 *.sln
 *.sw?
+Thumbs.db
+.history/
 
 # Coverage / testing
-coverage/
+/coverage/
 .nyc_output/
+/test-results/
+/playwright-report/
+/playwright/.cache/
 
 # Misc
 *.pem
 .eslintcache
 .npm/
-lerna-debug.log*
+
+# Database and Prisma
+*.db
+*.db-journal
+/backend/prisma/.env
+/backend/prisma/dev.db
+/backend/prisma/dev.db-journal
+/backend/prisma/migrations/.keep
+/backend/.env
+
+# Prisma Generated
+/backend/generated/
+/backend/prisma/generated/
+/backend/node_modules/.prisma/
+.prisma/
+
+# Cursor
+.cursor/
+
+# Vite
+.vite/
+*.timestamp-*
+
+# TypeScript
+*.tsbuildinfo
+
+# React / Frontend
+.cache/
+/frontend/public/hot/
+stats.html
+storybook-static/
+
+# Backend
+/backend/temp/
+/backend/tmp/
+/backend/uploads/
