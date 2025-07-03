@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useEffect, useMemo } from 'react';
 import ReactFlow, {
   MiniMap,
   Controls,
@@ -6,31 +6,99 @@ import ReactFlow, {
   useNodesState,
   useEdgesState,
   addEdge,
-} from "reactflow";
-import "reactflow/dist/style.css";
+} from 'reactflow';
+import 'reactflow/dist/style.css';
+import { usePersons } from '../../hooks/usePersons';
+import { useRelationships } from '../../hooks/useRelationships';
 
-const initialNodes = [
-  {
-    id: "1",
-    type: "input",
-    data: { label: "Start by adding\na family member" },
-    position: { x: 250, y: 0 },
+/**
+ * Convert person data to ReactFlow node format
+ * @param {Object} person - Person data
+ * @returns {Object} ReactFlow node
+ */
+const createPersonNode = (person) => ({
+  id: person.id.toString(),
+  type: 'default',
+  data: {
+    label: (
+      <div className="text-center">
+        <div className="font-medium">{person.name}</div>
+        {person.nameZh && (
+          <div className="text-sm text-gray-500">{person.nameZh}</div>
+        )}
+      </div>
+    ),
   },
-];
+  position: { x: Math.random() * 500, y: Math.random() * 500 }, // TODO: Implement proper layout algorithm
+});
 
-const initialEdges = [];
+/**
+ * Convert relationship data to ReactFlow edge format
+ * @param {Object} relationship - Relationship data
+ * @returns {Object} ReactFlow edge
+ */
+const createRelationshipEdge = (relationship) => ({
+  id: relationship.id.toString(),
+  source: relationship.fromId.toString(),
+  target: relationship.toId.toString(),
+  label: relationship.type,
+  type: 'default',
+});
 
 const FamilyTree = () => {
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const { persons, loading: personsLoading, error: personsError } = usePersons();
+  const {
+    relationships,
+    loading: relationshipsLoading,
+    error: relationshipsError,
+  } = useRelationships();
+
+  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+
+  // Convert persons to nodes
+  useEffect(() => {
+    if (persons.length > 0) {
+      const personNodes = persons.map(createPersonNode);
+      setNodes(personNodes);
+    }
+  }, [persons, setNodes]);
+
+  // Convert relationships to edges
+  useEffect(() => {
+    if (relationships.length > 0) {
+      const relationshipEdges = relationships.map(createRelationshipEdge);
+      setEdges(relationshipEdges);
+    }
+  }, [relationships, setEdges]);
 
   const onConnect = useCallback(
     (params) => setEdges((eds) => addEdge(params, eds)),
     [setEdges]
   );
 
+  // Loading state
+  if (personsLoading || relationshipsLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-lg text-gray-600">Loading family tree...</div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (personsError || relationshipsError) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-lg text-red-600">
+          Error loading family tree. Please try again later.
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div style={{ width: "100%", height: "500px" }}>
+    <div style={{ width: '100%', height: '500px' }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
