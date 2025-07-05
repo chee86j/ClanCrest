@@ -1,16 +1,9 @@
 const express = require("express");
 const router = express.Router();
-const { PrismaClient } = require("@prisma/client");
 const { getKinship } = require("../controllers/kinshipController");
 const { googleAuth, getProfile } = require("../controllers/authController");
 const authMiddleware = require("../middleware/auth");
-const {
-  asyncHandler,
-  validateRequiredFields,
-  NotFoundError,
-} = require("../utils/errorHandler");
-
-const prisma = new PrismaClient();
+const personRoutes = require("./personRoutes");
 
 // Public routes
 router.get("/status", (req, res) => {
@@ -21,47 +14,8 @@ router.get("/status", (req, res) => {
 router.post("/auth/google", googleAuth);
 router.get("/auth/profile", authMiddleware, getProfile);
 
-// Protected routes
-router.get(
-  "/persons",
-  authMiddleware,
-  asyncHandler(async (req, res) => {
-    console.log("📋 Fetching persons for user:", req.user.id);
-
-    const persons = await prisma.person.findMany({
-      where: {
-        userId: req.user.id,
-      },
-      include: {
-        relationshipsFrom: true,
-        relationshipsTo: true,
-      },
-    });
-
-    console.log(`✅ Found ${persons.length} persons`);
-    res.json(persons);
-  })
-);
-
-router.post(
-  "/persons",
-  authMiddleware,
-  asyncHandler(async (req, res) => {
-    validateRequiredFields(["name"], req.body);
-
-    console.log("🆕 Creating person:", req.body.name);
-
-    const person = await prisma.person.create({
-      data: {
-        ...req.body,
-        userId: req.user.id,
-      },
-    });
-
-    console.log("✅ Person created:", person.id);
-    res.json(person);
-  })
-);
+// Person routes
+router.use("/persons", personRoutes);
 
 router.post(
   "/relationships",
