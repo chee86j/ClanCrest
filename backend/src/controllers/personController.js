@@ -5,6 +5,7 @@ const {
   validateChineseName,
   validateNotes,
   validatePersonId,
+  validateImageId,
   validateSearchQuery,
 } = require("../utils/validation");
 
@@ -116,7 +117,7 @@ const getPersonById = async (req, res) => {
 const createPerson = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { name, nameZh, notes } = req.body;
+    const { name, nameZh, notes, imageId } = req.body;
 
     // Validate all fields using our validation utilities
     const nameValidation = validatePersonName(name);
@@ -145,11 +146,20 @@ const createPerson = async (req, res) => {
       });
     }
 
+    // Check for imageId validation errors
+    if (!imageIdValidation.isValid) {
+      return res.status(400).json({
+        success: false,
+        error: imageIdValidation.error,
+      });
+    }
+
     const person = await prisma.person.create({
       data: {
         name: nameValidation.value,
         nameZh: chineseNameValidation.value,
         notes: notesValidation.value,
+        imageId: imageIdValidation.value,
         userId,
       },
     });
@@ -179,7 +189,7 @@ const updatePerson = async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user.id;
-    const { name, nameZh, notes } = req.body;
+    const { name, nameZh, notes, imageId } = req.body;
 
     // Validate person ID
     const idValidation = validatePersonId(id);
@@ -232,12 +242,27 @@ const updatePerson = async (req, res) => {
       });
     }
 
+    // Check for imageId validation errors if provided
+    if (
+      imageId !== undefined &&
+      imageId !== null &&
+      !imageIdValidation.isValid
+    ) {
+      return res.status(400).json({
+        success: false,
+        error: imageIdValidation.error,
+      });
+    }
+
     const updatedPerson = await prisma.person.update({
       where: { id: idValidation.value },
       data: {
         name: nameValidation.value,
         nameZh: chineseNameValidation.value,
         notes: notesValidation.value,
+        ...(imageId !== undefined && imageId !== null
+          ? { imageId: imageIdValidation.value }
+          : {}),
       },
     });
 

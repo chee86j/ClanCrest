@@ -5,6 +5,7 @@ import Home from "./pages/Home";
 import About from "./pages/About";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
+import PersonManager from "./pages/PersonManager";
 import ProtectedRoute from "./components/layout/ProtectedRoute";
 import { AuthProvider } from "./context/AuthContext";
 
@@ -24,6 +25,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <Dashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/persons"
+                element={
+                  <ProtectedRoute>
+                    <PersonManager />
                   </ProtectedRoute>
                 }
               />

@@ -29,6 +29,7 @@ model Person {
   name             String
   nameZh           String?
   notes            String?
+  imageId          Int?          // ID of the profile image (1-4)
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
   userId           Int?          // Optional to support migration of existing data

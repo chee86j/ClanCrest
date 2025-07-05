@@ -1,13 +1,17 @@
 import { useAuth } from "../context/AuthContext";
-import { Navigate } from "react-router-dom";
+import { Navigate, Link } from "react-router-dom";
 import FamilyTree from "../components/tree/FamilyTree";
-import ChineseFrame from "../assets/images/ChineseFrame.png";
-import EuropeanFrame from "../assets/images/EuropeanFrame.png";
+import Image01 from "../assets/images/01.png";
+import Image02 from "../assets/images/02.png";
+import Image03 from "../assets/images/03.png";
+import Image04 from "../assets/images/04.png";
 import { useState } from "react";
 
 const frameImages = [
-  { src: ChineseFrame, alt: "Chinese Frame" },
-  { src: EuropeanFrame, alt: "European Frame" },
+  { src: Image01, alt: "Frame 1" },
+  { src: Image02, alt: "Frame 2" },
+  { src: Image03, alt: "Frame 3" },
+  { src: Image04, alt: "Frame 4" },
 ];
 
 const Dashboard = () => {
@@ -78,6 +82,12 @@ const Dashboard = () => {
               Start building your family tree by adding family members and their
               relationships.
             </p>
+            <Link
+              to="/persons"
+              className="mt-4 inline-block px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+            >
+              Manage Family Members
+            </Link>
           </div>
           <div className="bg-white p-6 rounded-lg shadow">
             <h3 className="text-lg font-medium text-gray-900">

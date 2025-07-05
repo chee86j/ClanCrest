@@ -127,6 +127,34 @@ const validatePersonId = (id) => {
 };
 
 /**
+ * Validate image ID (optional field)
+ * @param {string|number} imageId - Image ID to validate
+ * @returns {Object} Validation result with isValid and error message
+ */
+const validateImageId = (imageId) => {
+  if (imageId === undefined || imageId === null) {
+    return {
+      isValid: true,
+      value: 1, // Default to image 1
+    };
+  }
+
+  const parsedId = parseInt(imageId);
+
+  if (isNaN(parsedId) || parsedId < 1 || parsedId > 4) {
+    return {
+      isValid: false,
+      error: "Image ID must be between 1 and 4",
+    };
+  }
+
+  return {
+    isValid: true,
+    value: parsedId,
+  };
+};
+
+/**
  * Validate search query
  * @param {string} query - Search query to validate
  * @returns {Object} Validation result with isValid and error message
@@ -165,5 +193,6 @@ module.exports = {
   validateChineseName,
   validateNotes,
   validatePersonId,
+  validateImageId,
   validateSearchQuery,
 };

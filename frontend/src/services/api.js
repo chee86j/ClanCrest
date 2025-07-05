@@ -68,6 +68,21 @@ export const personApi = {
   },
 
   /**
+   * Get a person by ID
+   * @param {number} id - Person ID
+   * @returns {Promise<Object>} Person data
+   */
+  getById: async (id) => {
+    try {
+      const response = await api.get(`${API_ENDPOINTS.PERSONS}/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error(`🔥 Error fetching person ${id}:`, error);
+      throw error;
+    }
+  },
+
+  /**
    * Create a new person
    * @param {Object} personData - Person data to create
    * @returns {Promise<Object>} Created person
@@ -78,6 +93,57 @@ export const personApi = {
       return response.data;
     } catch (error) {
       console.error("🔥 Error creating person:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Update an existing person
+   * @param {number} id - Person ID
+   * @param {Object} personData - Updated person data
+   * @returns {Promise<Object>} Updated person
+   */
+  update: async (id, personData) => {
+    try {
+      const response = await api.put(
+        `${API_ENDPOINTS.PERSONS}/${id}`,
+        personData
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`🔥 Error updating person ${id}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Delete a person
+   * @param {number} id - Person ID
+   * @returns {Promise<Object>} Deletion status
+   */
+  delete: async (id) => {
+    try {
+      const response = await api.delete(`${API_ENDPOINTS.PERSONS}/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error(`🔥 Error deleting person ${id}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Search persons by name (English or Chinese)
+   * @param {string} query - Search query
+   * @returns {Promise<Array>} Search results
+   */
+  search: async (query) => {
+    try {
+      const response = await api.get(
+        `${API_ENDPOINTS.PERSONS}/search?query=${encodeURIComponent(query)}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error("🔥 Error searching persons:", error);
       throw error;
     }
   },
