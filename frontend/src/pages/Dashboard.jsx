@@ -1,9 +1,22 @@
 import { useAuth } from "../context/AuthContext";
 import { Navigate } from "react-router-dom";
 import FamilyTree from "../components/tree/FamilyTree";
+import ChineseFrame from "../assets/images/ChineseFrame.png";
+import EuropeanFrame from "../assets/images/EuropeanFrame.png";
+import { useState } from "react";
+
+const frameImages = [
+  { src: ChineseFrame, alt: "Chinese Frame" },
+  { src: EuropeanFrame, alt: "European Frame" },
+];
 
 const Dashboard = () => {
   const { user, isAuthenticated } = useAuth();
+  const [frameIndex, setFrameIndex] = useState(0);
+
+  const nextFrame = () => setFrameIndex((frameIndex + 1) % frameImages.length);
+  const prevFrame = () =>
+    setFrameIndex((frameIndex - 1 + frameImages.length) % frameImages.length);
 
   if (!isAuthenticated) {
     return <Navigate to="/auth" replace />;
@@ -13,12 +26,32 @@ const Dashboard = () => {
     <div className="min-h-screen bg-gray-50">
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="text-center mb-12">
-          <div className="flex justify-center mb-8">
-            <img
-              src={user.picture}
-              alt={`${user.name}'s profile`}
-              className="h-24 w-24 rounded-full"
-            />
+          <div className="flex flex-col items-center mb-8">
+            <div className="relative h-60 w-60 flex items-center justify-center group">
+              {/* Profile Picture */}
+              <img
+                src={user.picture}
+                alt={`${user.name}'s profile`}
+                className="absolute h-20 w-20 rounded-full object-cover z-10"
+                style={{
+                  top: "calc(50% + 6px)",
+                  left: "50%",
+                  transform: "translate(-50%, -50%)",
+                }}
+              />
+              {/* Frame */}
+              <img
+                src={frameImages[frameIndex].src}
+                alt={frameImages[frameIndex].alt}
+                className="absolute h-60 w-60 z-20 pointer-events-auto cursor-pointer transition-transform duration-150 group-hover:scale-105"
+                style={{
+                  top: 0,
+                  left: 0,
+                }}
+                onClick={nextFrame}
+                title="Click to change frame"
+              />
+            </div>
           </div>
           <h1 className="text-4xl tracking-tight font-extrabold text-gray-900 sm:text-5xl md:text-6xl">
             <span className="block">Welcome back,</span>
