@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from "react";
 import ReactFlow, {
   MiniMap,
   Controls,
@@ -6,10 +6,11 @@ import ReactFlow, {
   useNodesState,
   useEdgesState,
   addEdge,
-} from 'reactflow';
-import 'reactflow/dist/style.css';
-import { usePersons } from '../../hooks/usePersons';
-import { useRelationships } from '../../hooks/useRelationships';
+} from "reactflow";
+import "reactflow/dist/style.css";
+import { usePersons } from "../../hooks/usePersons";
+import { useRelationships } from "../../hooks/useRelationships";
+import KinshipFinder from "./KinshipFinder";
 
 /**
  * Convert person data to ReactFlow node format
@@ -18,7 +19,7 @@ import { useRelationships } from '../../hooks/useRelationships';
  */
 const createPersonNode = (person) => ({
   id: person.id.toString(),
-  type: 'default',
+  type: "default",
   data: {
     label: (
       <div className="text-center">
@@ -42,11 +43,15 @@ const createRelationshipEdge = (relationship) => ({
   source: relationship.fromId.toString(),
   target: relationship.toId.toString(),
   label: relationship.type,
-  type: 'default',
+  type: "default",
 });
 
 const FamilyTree = () => {
-  const { persons, loading: personsLoading, error: personsError } = usePersons();
+  const {
+    persons,
+    loading: personsLoading,
+    error: personsError,
+  } = usePersons();
   const {
     relationships,
     loading: relationshipsLoading,
@@ -98,19 +103,25 @@ const FamilyTree = () => {
   }
 
   return (
-    <div style={{ width: '100%', height: '500px' }}>
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
-        fitView
-      >
-        <Controls />
-        <MiniMap />
-        <Background variant="dots" gap={12} size={1} />
-      </ReactFlow>
+    <div className="space-y-8">
+      <div style={{ width: "100%", height: "500px" }}>
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          fitView
+        >
+          <Controls />
+          <MiniMap />
+          <Background variant="dots" gap={12} size={1} />
+        </ReactFlow>
+      </div>
+
+      <div className="max-w-md mx-auto">
+        <KinshipFinder persons={persons} />
+      </div>
     </div>
   );
 };

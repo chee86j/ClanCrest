@@ -1,22 +1,53 @@
-import axios from 'axios';
+import axios from "axios";
 
 /**
  * API endpoints configuration
  */
 const API_ENDPOINTS = {
-  PERSONS: '/api/persons',
-  RELATIONSHIPS: '/api/relationships',
+  PERSONS: "/persons",
+  RELATIONSHIPS: "/relationships",
+  AUTH: {
+    GOOGLE: "/auth/google",
+    PROFILE: "/auth/profile",
+  },
 };
 
 /**
  * Create axios instance with default configuration
  */
 const api = axios.create({
-  baseURL: import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000',
+  baseURL: `${import.meta.env.VITE_BACKEND_URL}/api`,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
 });
+
+// Add request interceptor to add auth token
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Add response interceptor to handle errors
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Clear local storage and redirect to login on auth error
+      localStorage.clear();
+      window.location.href = "/auth";
+    }
+    return Promise.reject(error);
+  }
+);
 
 /**
  * Person-related API calls
@@ -31,7 +62,7 @@ export const personApi = {
       const response = await api.get(API_ENDPOINTS.PERSONS);
       return response.data;
     } catch (error) {
-      console.error('🔥 Error fetching persons:', error);
+      console.error("🔥 Error fetching persons:", error);
       throw error;
     }
   },
@@ -46,7 +77,7 @@ export const personApi = {
       const response = await api.post(API_ENDPOINTS.PERSONS, personData);
       return response.data;
     } catch (error) {
-      console.error('🔥 Error creating person:', error);
+      console.error("🔥 Error creating person:", error);
       throw error;
     }
   },
@@ -65,7 +96,7 @@ export const relationshipApi = {
       const response = await api.get(API_ENDPOINTS.RELATIONSHIPS);
       return response.data;
     } catch (error) {
-      console.error('🔥 Error fetching relationships:', error);
+      console.error("🔥 Error fetching relationships:", error);
       throw error;
     }
   },
@@ -77,11 +108,16 @@ export const relationshipApi = {
    */
   create: async (relationshipData) => {
     try {
-      const response = await api.post(API_ENDPOINTS.RELATIONSHIPS, relationshipData);
+      const response = await api.post(
+        API_ENDPOINTS.RELATIONSHIPS,
+        relationshipData
+      );
       return response.data;
     } catch (error) {
-      console.error('🔥 Error creating relationship:', error);
+      console.error("🔥 Error creating relationship:", error);
       throw error;
     }
   },
-}; 
+};
+
+export default api;

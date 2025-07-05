@@ -13,6 +13,17 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id            Int       @id @default(autoincrement())
+  email         String    @unique
+  googleId      String?   @unique
+  name          String?
+  picture       String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  persons       Person[]
+}
+
 model Person {
   id                Int           @id @default(autoincrement())
   name             String
@@ -20,6 +31,8 @@ model Person {
   notes            String?
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
+  userId           Int?          // Optional to support migration of existing data
+  user             User?         @relation(fields: [userId], references: [id])
   relationshipsFrom Relationship[] @relation("FromPerson")
   relationshipsTo   Relationship[] @relation("ToPerson")
 }
