@@ -1,138 +1,104 @@
-const { PrismaClient } = require("@prisma/client");
-const jwt = require("jsonwebtoken");
-const {
-  ValidationError,
-  AuthError,
-  NotFoundError,
-  asyncHandler,
-} = require("../utils/errorHandler");
+const jwt = require('jsonwebtoken');
+const { OAuth2Client } = require('google-auth-library');
+const { PrismaClient } = require('@prisma/client');
+const { errorHandler, AuthError } = require('../utils/errorHandler');
 
 const prisma = new PrismaClient();
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 /**
- * Verify Google access token and get user info
- * @param {string} accessToken - Google OAuth access token
- * @returns {Promise<Object>} User info from Google
- */
-async function verifyGoogleAccessToken(accessToken) {
-  try {
-    console.log("🔍 Verifying access token:", accessToken);
-
-    // Fetch user info from Google using the access token
-    const response = await fetch(
-      `https://www.googleapis.com/oauth2/v2/userinfo?access_token=${accessToken}`
-    );
-
-    if (!response.ok) {
-      throw new Error("Failed to verify access token");
-    }
-
-    const userInfo = await response.json();
-    console.log("✅ User info from Google:", userInfo);
-
-    return userInfo;
-  } catch (error) {
-    console.error("❌ Error verifying Google access token:", error);
-    throw new AuthError("Invalid access token");
-  }
-}
-
-/**
- * Generate JWT token for user
- * @param {Object} user - User object from database
+ * Generate JWT token
+ * @param {Object} user - User object
  * @returns {string} JWT token
  */
-function generateToken(user) {
+const generateToken = (user) => {
+  if (!process.env.JWT_SECRET) {
+    throw new Error('JWT_SECRET not configured');
+  }
+  
   return jwt.sign(
-    {
+    { 
       id: user.id,
       email: user.email,
+      name: user.name
     },
     process.env.JWT_SECRET,
-    { expiresIn: "7d" }
+    { 
+      expiresIn: process.env.JWT_EXPIRES_IN || '7d'
+    }
   );
-}
+};
 
 /**
- * Handle Google OAuth authentication
- * @param {Request} req - Express request object
- * @param {Response} res - Express response object
+ * Handle Google OAuth callback
  */
-const googleAuth = asyncHandler(async (req, res) => {
+const handleGoogleAuth = errorHandler(async (req, res) => {
   const { token } = req.body;
-  console.log("🔐 Received token:", token);
 
   if (!token) {
-    throw new ValidationError("Token is required");
+    throw new AuthError('No token provided');
   }
 
-  // For backward compatibility, check if it's a JWT token first
-  let googleUser;
   try {
-    // Try to decode as JWT first
-    const decodedToken = jwt.decode(token);
-    if (decodedToken && decodedToken.email) {
-      googleUser = decodedToken;
+    // Verify Google token
+    const ticket = await client.verifyIdToken({
+      idToken: token,
+      audience: process.env.GOOGLE_CLIENT_ID
+    });
+
+    const googleUser = ticket.getPayload();
+    console.log("✅ Google user verified:", googleUser.email);
+
+    // Find or create user
+    let user = await prisma.user.findUnique({
+      where: { email: googleUser.email }
+    });
+
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          email: googleUser.email,
+          name: googleUser.name,
+          googleId: googleUser.sub,
+          picture: googleUser.picture
+        }
+      });
+      console.log("👤 Created new user:", user.email);
     } else {
-      // If not JWT, treat as access token
-      googleUser = await verifyGoogleAccessToken(token);
+      // Update existing user's Google info
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          googleId: googleUser.sub,
+          picture: googleUser.picture,
+          name: googleUser.name
+        }
+      });
+      console.log("👤 Updated existing user:", user.email);
     }
+
+    // Generate JWT
+    const authToken = generateToken(user);
+
+    res.json({
+      token: authToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        picture: user.picture
+      }
+    });
   } catch (error) {
-    // If JWT decode fails, treat as access token
-    googleUser = await verifyGoogleAccessToken(token);
+    console.error("🚨 Google auth error:", error);
+    throw new AuthError('Failed to authenticate with Google');
   }
-
-  console.log("👤 Google user:", googleUser);
-
-  // Find or create user
-  let user = await prisma.user.findUnique({
-    where: { email: googleUser.email },
-  });
-
-  if (!user) {
-    console.log("🆕 Creating new user:", googleUser.email);
-    user = await prisma.user.create({
-      data: {
-        email: googleUser.email,
-        googleId: googleUser.id || googleUser.sub,
-        name: `${googleUser.given_name} ${googleUser.family_name}`,
-        picture: googleUser.picture,
-      },
-    });
-  } else {
-    console.log("🔄 Updating existing user:", googleUser.email);
-    // Update existing user's Google info
-    user = await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        googleId: googleUser.id || googleUser.sub,
-        name: `${googleUser.given_name} ${googleUser.family_name}`,
-        picture: googleUser.picture,
-      },
-    });
-  }
-
-  // Generate JWT
-  const authToken = generateToken(user);
-  console.log("✅ Authentication successful for:", user.email);
-
-  res.json({
-    token: authToken,
-    user: {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      picture: user.picture,
-    },
-  });
 });
 
 /**
  * Get current user profile
- * @param {Request} req - Express request object
- * @param {Response} res - Express response object
  */
-const getProfile = asyncHandler(async (req, res) => {
+const getProfile = errorHandler(async (req, res) => {
   const user = await prisma.user.findUnique({
     where: { id: req.user.id },
     select: {
@@ -140,18 +106,18 @@ const getProfile = asyncHandler(async (req, res) => {
       email: true,
       name: true,
       picture: true,
-    },
+      createdAt: true
+    }
   });
 
   if (!user) {
-    throw new NotFoundError("User");
+    throw new AuthError('User not found');
   }
 
-  console.log("📋 Profile fetched for:", user.email);
   res.json(user);
 });
 
 module.exports = {
-  googleAuth,
-  getProfile,
+  handleGoogleAuth,
+  getProfile
 };

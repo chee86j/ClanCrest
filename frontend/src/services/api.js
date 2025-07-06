@@ -184,6 +184,85 @@ export const relationshipApi = {
       throw error;
     }
   },
+
+  /**
+   * Get a relationship by ID
+   * @param {number} id - Relationship ID
+   * @returns {Promise<Object>} Relationship data
+   */
+  getById: async (id) => {
+    try {
+      const response = await api.get(`${API_ENDPOINTS.RELATIONSHIPS}/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error(`🔥 Error fetching relationship ${id}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Update an existing relationship
+   * @param {number} id - Relationship ID
+   * @param {Object} relationshipData - Updated relationship data
+   * @returns {Promise<Object>} Updated relationship
+   */
+  update: async (id, relationshipData) => {
+    try {
+      const response = await api.put(
+        `${API_ENDPOINTS.RELATIONSHIPS}/${id}`,
+        relationshipData
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`🔥 Error updating relationship ${id}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Delete a relationship
+   * @param {number} id - Relationship ID
+   * @returns {Promise<Object>} Deletion status
+   */
+  delete: async (id) => {
+    try {
+      const response = await api.delete(`${API_ENDPOINTS.RELATIONSHIPS}/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error(`🔥 Error deleting relationship ${id}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get relationships by person
+   * @param {number} personId - Person ID
+   * @returns {Promise<Array>} List of relationships
+   */
+  getByPerson: async (personId) => {
+    try {
+      const response = await api.get(`${API_ENDPOINTS.RELATIONSHIPS}/person/${personId}`);
+      return response.data;
+    } catch (error) {
+      console.error(`🔥 Error fetching relationships for person ${personId}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Validate a relationship
+   * @param {Object} relationshipData - Relationship data to validate
+   * @returns {Promise<Object>} Validation result
+   */
+  validateRelationship: async (relationshipData) => {
+    try {
+      const response = await api.post(`${API_ENDPOINTS.RELATIONSHIPS}/validate`, relationshipData);
+      return response.data;
+    } catch (error) {
+      console.error("🔥 Error validating relationship:", error);
+      throw error;
+    }
+  },
 };
 
 export default api;

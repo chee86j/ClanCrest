@@ -190,4 +190,4 @@ const usePersons = () => {
   };
 };
 
-export default usePersons;
+export { usePersons };

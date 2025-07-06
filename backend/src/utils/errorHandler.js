@@ -3,126 +3,109 @@
  */
 
 /**
- * Custom error class for API errors
+ * Custom error classes
  */
-class ApiError extends Error {
-  constructor(message, statusCode = 500, details = null) {
+class AppError extends Error {
+  constructor(message, statusCode = 500) {
     super(message);
     this.statusCode = statusCode;
-    this.details = details;
-    this.name = "ApiError";
+    this.status = `${statusCode}`.startsWith('4') ? 'fail' : 'error';
+    this.isOperational = true;
+
+    Error.captureStackTrace(this, this.constructor);
   }
 }
 
-/**
- * Validation error class
- */
-class ValidationError extends ApiError {
-  constructor(message, details = null) {
-    super(message, 400, details);
-    this.name = "ValidationError";
-  }
-}
-
-/**
- * Authentication error class
- */
-class AuthError extends ApiError {
-  constructor(message = "Authentication failed") {
+class AuthError extends AppError {
+  constructor(message = 'Authentication failed') {
     super(message, 401);
-    this.name = "AuthError";
   }
 }
 
-/**
- * Not found error class
- */
-class NotFoundError extends ApiError {
-  constructor(resource = "Resource") {
+class ValidationError extends AppError {
+  constructor(message = 'Validation failed') {
+    super(message, 400);
+  }
+}
+
+class NotFoundError extends AppError {
+  constructor(resource = 'Resource') {
     super(`${resource} not found`, 404);
-    this.name = "NotFoundError";
   }
 }
 
 /**
- * Centralized error handler middleware
- * @param {Error} error - Error object
- * @param {Request} req - Express request object
- * @param {Response} res - Express response object
- * @param {Function} next - Express next function
+ * Error handler wrapper for async route handlers
+ * @param {Function} fn - Async route handler
+ * @returns {Function} Wrapped handler
  */
-const errorHandler = (error, req, res, next) => {
-  console.error("🚨 Error occurred:", {
-    message: error.message,
-    stack: error.stack,
+const errorHandler = (fn) => (req, res, next) => {
+  Promise.resolve(fn(req, res, next)).catch(next);
+};
+
+/**
+ * Global error handling middleware
+ */
+const handleErrors = (err, req, res, next) => {
+  console.error('🚨 Error occurred:', {
+    message: err.message,
+    stack: err.stack,
     url: req.url,
     method: req.method,
     timestamp: new Date().toISOString(),
   });
 
-  // Handle known error types
-  if (error instanceof ApiError) {
-    return res.status(error.statusCode).json({
-      error: error.message,
-      details: error.details,
-      timestamp: new Date().toISOString(),
-    });
-  }
-
   // Handle Prisma errors
-  if (error.code === "P2002") {
-    return res.status(409).json({
-      error: "Resource already exists",
-      details: "A record with this unique field already exists",
-      timestamp: new Date().toISOString(),
-    });
-  }
-
-  if (error.code === "P2025") {
-    return res.status(404).json({
-      error: "Record not found",
-      details: "The requested record does not exist",
-      timestamp: new Date().toISOString(),
-    });
+  if (err.code?.startsWith('P')) {
+    switch (err.code) {
+      case 'P2002':
+        return res.status(409).json({
+          status: 'error',
+          message: 'A record with this value already exists',
+        });
+      case 'P2025':
+        return res.status(404).json({
+          status: 'error',
+          message: 'Record not found',
+        });
+      default:
+        return res.status(500).json({
+          status: 'error',
+          message: 'Database operation failed',
+        });
+    }
   }
 
   // Handle JWT errors
-  if (error.name === "JsonWebTokenError") {
+  if (err.name === 'JsonWebTokenError') {
     return res.status(401).json({
-      error: "Invalid token",
-      details: "The provided authentication token is invalid",
-      timestamp: new Date().toISOString(),
+      status: 'error',
+      message: 'Invalid token',
     });
   }
 
-  if (error.name === "TokenExpiredError") {
+  if (err.name === 'TokenExpiredError') {
     return res.status(401).json({
-      error: "Token expired",
-      details: "The authentication token has expired",
-      timestamp: new Date().toISOString(),
+      status: 'error',
+      message: 'Token expired',
     });
   }
 
-  // Default error response
-  const statusCode = error.statusCode || 500;
-  const message = error.message || "Internal server error";
+  // Handle known operational errors
+  if (err instanceof AppError) {
+    return res.status(err.statusCode).json({
+      status: err.status,
+      message: err.message,
+    });
+  }
 
-  res.status(statusCode).json({
-    error: message,
-    timestamp: new Date().toISOString(),
-    ...(process.env.NODE_ENV === "development" && { stack: error.stack }),
+  // Handle unknown errors
+  res.status(500).json({
+    status: 'error',
+    message: process.env.NODE_ENV === 'production' 
+      ? 'Something went wrong' 
+      : err.message,
   });
-};
-
-/**
- * Async error wrapper for route handlers
- * @param {Function} fn - Async route handler function
- * @returns {Function} Wrapped function with error handling
- */
-const asyncHandler = (fn) => {
-  return (req, res, next) => {
-    Promise.resolve(fn(req, res, next)).catch(next);
-  };
 };
 
 /**
@@ -162,12 +145,12 @@ const validateNumericId = (id, paramName = "ID") => {
 };
 
 module.exports = {
-  ApiError,
-  ValidationError,
+  AppError,
   AuthError,
+  ValidationError,
   NotFoundError,
   errorHandler,
-  asyncHandler,
+  handleErrors,
   validateRequiredFields,
   validateNumericId,
 };

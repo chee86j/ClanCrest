@@ -1,9 +1,15 @@
 const express = require("express");
 const router = express.Router();
+const asyncHandler = require("express-async-handler");
+const { PrismaClient } = require("@prisma/client");
+const { validateRequiredFields } = require("../utils/validation");
+const { NotFoundError } = require("../utils/errorHandler");
 const { getKinship } = require("../controllers/kinshipController");
 const { googleAuth, getProfile } = require("../controllers/authController");
 const authMiddleware = require("../middleware/auth");
 const personRoutes = require("./personRoutes");
+
+const prisma = new PrismaClient();
 
 // Public routes
 router.get("/status", (req, res) => {

@@ -1,28 +1,39 @@
 const jwt = require("jsonwebtoken");
-const { AuthError, asyncHandler } = require("../utils/errorHandler");
+const { errorHandler, AuthError } = require("../utils/errorHandler");
 
 /**
- * Middleware to verify JWT token and attach user to request
- * @param {Request} req - Express request object
- * @param {Response} res - Express response object
- * @param {Function} next - Express next function
+ * Authentication middleware
+ * Verifies JWT token and attaches user to request
  */
-const authMiddleware = asyncHandler(async (req, res, next) => {
-  const token = req.headers.authorization?.split(" ")[1];
-
-  if (!token) {
-    throw new AuthError("Authentication required");
-  }
-
+const auth = errorHandler(async (req, res, next) => {
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
-    console.log("🔐 User authenticated:", decoded.email);
-    next();
+    // Get token from header
+    const authHeader = req.header('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      throw new AuthError('No token provided');
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    
+    if (!process.env.JWT_SECRET) {
+      console.error('JWT_SECRET not configured');
+      throw new AuthError('Authentication configuration error');
+    }
+
+    try {
+      // Verify token
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      req.user = decoded;
+      console.log("🔐 User authenticated:", decoded.email);
+      next();
+    } catch (err) {
+      console.error('Token verification failed:', err.message);
+      throw new AuthError('Invalid token');
+    }
   } catch (error) {
     console.error("❌ Auth middleware error:", error.message);
-    throw new AuthError("Invalid token");
+    next(error);
   }
 });
 
-module.exports = authMiddleware;
+module.exports = auth;
