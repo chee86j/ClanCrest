@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import ReactFlow, {
   MiniMap,
   Controls,
@@ -12,6 +12,7 @@ import "reactflow/dist/style.css";
 import { usePersons } from "../../hooks/usePersons";
 import { useRelationships } from "../../hooks/useRelationships";
 import KinshipFinder from "./KinshipFinder";
+import NodeEditor from "./NodeEditor";
 
 // Node style based on gender
 const genderStyles = {
@@ -122,6 +123,7 @@ const createPersonNode = (person, position) => ({
         )}
       </div>
     ),
+    person, // Store the full person object for easy access
   },
   position: position || { x: 0, y: 0 },
   style: {
@@ -152,6 +154,7 @@ const createRelationshipEdge = (relationship) => ({
   type: "smoothstep",
   style: getEdgeStyle(relationship.dnaConfirmed),
   animated: relationship.dnaConfirmed,
+  data: relationship, // Store the full relationship object for easy access
 });
 
 const FamilyTree = () => {
@@ -159,15 +162,23 @@ const FamilyTree = () => {
     persons = [],
     loading: personsLoading,
     error: personsError,
+    updatePerson,
+    deletePerson,
   } = usePersons();
   const {
     relationships = [],
     loading: relationshipsLoading,
     error: relationshipsError,
+    createRelationship,
+    updateRelationship,
+    deleteRelationship,
   } = useRelationships();
 
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [selectedNode, setSelectedNode] = useState(null);
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Calculate node positions
   const nodePositions = useMemo(
@@ -201,6 +212,84 @@ const FamilyTree = () => {
     (params) => setEdges((eds) => addEdge(params, eds)),
     [setEdges]
   );
+
+  // Node click handler
+  const onNodeClick = useCallback((event, node) => {
+    setSelectedNode(node.data.person);
+    setIsEditorOpen(true);
+  }, []);
+
+  // Handle person updates
+  const handleUpdatePerson = async (updatedData) => {
+    try {
+      setIsLoading(true);
+      await updatePerson(selectedNode.id, updatedData);
+      setIsEditorOpen(false);
+      setSelectedNode(null);
+    } catch (error) {
+      console.error("Failed to update person:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle person deletion
+  const handleDeletePerson = async (personId) => {
+    try {
+      setIsLoading(true);
+      await deletePerson(personId);
+      setIsEditorOpen(false);
+      setSelectedNode(null);
+    } catch (error) {
+      console.error("Failed to delete person:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle relationship creation
+  const handleAddRelationship = async (relationshipData) => {
+    try {
+      setIsLoading(true);
+      await createRelationship(relationshipData);
+    } catch (error) {
+      console.error("Failed to create relationship:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle relationship updates
+  const handleUpdateRelationship = async (relationshipId, updatedData) => {
+    try {
+      setIsLoading(true);
+      await updateRelationship(relationshipId, updatedData);
+    } catch (error) {
+      console.error("Failed to update relationship:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle relationship deletion
+  const handleDeleteRelationship = async (relationshipId) => {
+    try {
+      setIsLoading(true);
+      await deleteRelationship(relationshipId);
+    } catch (error) {
+      console.error("Failed to delete relationship:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Get relationships for selected person
+  const selectedPersonRelationships = useMemo(() => {
+    if (!selectedNode) return [];
+    return relationships.filter(
+      (rel) => rel.fromId === selectedNode.id || rel.toId === selectedNode.id
+    );
+  }, [selectedNode, relationships]);
 
   // Loading state
   if (personsLoading || relationshipsLoading) {
@@ -242,6 +331,7 @@ const FamilyTree = () => {
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
+          onNodeClick={onNodeClick}
           fitView
           minZoom={0.5}
           maxZoom={1.5}
@@ -272,6 +362,23 @@ const FamilyTree = () => {
           </Panel>
         </ReactFlow>
       </div>
+
+      {isEditorOpen && selectedNode && (
+        <NodeEditor
+          person={selectedNode}
+          onClose={() => {
+            setIsEditorOpen(false);
+            setSelectedNode(null);
+          }}
+          onUpdatePerson={handleUpdatePerson}
+          onDeletePerson={handleDeletePerson}
+          onAddRelationship={handleAddRelationship}
+          onUpdateRelationship={handleUpdateRelationship}
+          onDeleteRelationship={handleDeleteRelationship}
+          relationships={selectedPersonRelationships}
+          isLoading={isLoading}
+        />
+      )}
 
       <div className="max-w-md mx-auto">
         <KinshipFinder persons={persons} />
