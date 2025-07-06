@@ -1,11 +1,16 @@
 const express = require("express");
 const router = express.Router();
-const asyncHandler = require("express-async-handler");
+const { errorHandler, NotFoundError } = require("../utils/errorHandler");
 const { PrismaClient } = require("@prisma/client");
 const { validateRequiredFields } = require("../utils/validation");
-const { NotFoundError } = require("../utils/errorHandler");
 const { getKinship } = require("../controllers/kinshipController");
-const { googleAuth, getProfile } = require("../controllers/authController");
+const { handleGoogleAuth, getProfile } = require("../controllers/authController");
+const {
+  createRelationship,
+  updateRelationship,
+  deleteRelationship,
+  getPersonRelationships,
+} = require("../controllers/relationshipController");
 const authMiddleware = require("../middleware/auth");
 const personRoutes = require("./personRoutes");
 
@@ -17,58 +22,31 @@ router.get("/status", (req, res) => {
 });
 
 // Auth routes
-router.post("/auth/google", googleAuth);
+router.post("/auth/google", handleGoogleAuth);
 router.get("/auth/profile", authMiddleware, getProfile);
 
 // Person routes
 router.use("/persons", personRoutes);
 
-router.post(
-  "/relationships",
-  authMiddleware,
-  asyncHandler(async (req, res) => {
-    validateRequiredFields(["fromId", "toId", "type"], req.body);
+// Relationship routes
+router.post("/relationships", authMiddleware, createRelationship);
+router.put("/relationships/:id", authMiddleware, updateRelationship);
+router.delete("/relationships/:id", authMiddleware, deleteRelationship);
+router.get("/persons/:id/relationships", authMiddleware, getPersonRelationships);
 
-    console.log("🔗 Creating relationship:", {
-      fromId: req.body.fromId,
-      toId: req.body.toId,
-      type: req.body.type,
-    });
-
-    // Verify both persons belong to the user
-    const [fromPerson, toPerson] = await Promise.all([
-      prisma.person.findFirst({
-        where: { id: req.body.fromId, userId: req.user.id },
-      }),
-      prisma.person.findFirst({
-        where: { id: req.body.toId, userId: req.user.id },
-      }),
-    ]);
-
-    if (!fromPerson || !toPerson) {
-      throw new NotFoundError("One or both persons (must belong to you)");
-    }
-
-    const relationship = await prisma.relationship.create({
-      data: req.body,
-    });
-
-    console.log("✅ Relationship created:", relationship.id);
-    res.json(relationship);
-  })
-);
-
+// Get all relationships for the user
 router.get(
   "/relationships",
   authMiddleware,
-  asyncHandler(async (req, res) => {
+  errorHandler(async (req, res) => {
     console.log("🔗 Fetching relationships for user:", req.user.id);
 
     const relationships = await prisma.relationship.findMany({
       where: {
-        from: {
-          userId: req.user.id,
-        },
+        OR: [
+          { from: { userId: req.user.id } },
+          { to: { userId: req.user.id } },
+        ],
       },
       include: {
         from: true,
@@ -77,11 +55,31 @@ router.get(
     });
 
     console.log(`✅ Found ${relationships.length} relationships`);
-    res.json(relationships);
+    res.json({
+      success: true,
+      data: relationships,
+      count: relationships.length,
+    });
   })
 );
 
 // Kinship route
 router.get("/kinship", authMiddleware, getKinship);
+
+// Health check
+router.get(
+  "/health",
+  errorHandler(async (req, res) => {
+    res.json({ status: "ok", timestamp: new Date().toISOString() });
+  })
+);
+
+// Error route for testing error handling
+router.get(
+  "/error",
+  errorHandler(async (req, res) => {
+    throw new Error("Test error");
+  })
+);
 
 module.exports = router;

@@ -3,7 +3,7 @@ const { findKinshipPath } = require("../utils/kinshipResolver");
 const {
   ValidationError,
   NotFoundError,
-  asyncHandler,
+  errorHandler,
   validateNumericId,
 } = require("../utils/errorHandler");
 
@@ -14,7 +14,7 @@ const prisma = new PrismaClient();
  * @param {Request} req - Express request object with fromId and toId query params
  * @param {Response} res - Express response object
  */
-const getKinship = asyncHandler(async (req, res) => {
+const getKinship = errorHandler(async (req, res) => {
   const fromId = validateNumericId(req.query.from, "from ID");
   const toId = validateNumericId(req.query.to, "to ID");
 

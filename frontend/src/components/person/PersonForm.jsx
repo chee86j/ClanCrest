@@ -21,12 +21,19 @@ const imageOptions = [
   { id: 4, src: Image04, alt: "Frame 4" },
 ];
 
+const genderOptions = [
+  { value: "male", label: "Male" },
+  { value: "female", label: "Female" },
+  { value: "other", label: "Other" },
+];
+
 const PersonForm = ({ initialData, onSubmit, onCancel, isLoading = false }) => {
   const [formData, setFormData] = useState({
     name: "",
     nameZh: "",
     notes: "",
     imageId: 1, // Default to the first image
+    gender: "other", // Default to other
   });
 
   const [errors, setErrors] = useState({});
@@ -40,6 +47,7 @@ const PersonForm = ({ initialData, onSubmit, onCancel, isLoading = false }) => {
         nameZh: initialData.nameZh || "",
         notes: initialData.notes || "",
         imageId: initialData.imageId || 1,
+        gender: initialData.gender || "other",
       });
     }
   }, [initialData]);
@@ -86,6 +94,11 @@ const PersonForm = ({ initialData, onSubmit, onCancel, isLoading = false }) => {
     // Notes validation (optional)
     if (formData.notes && formData.notes.length > 1000) {
       newErrors.notes = "Notes cannot exceed 1000 characters";
+    }
+
+    // Gender validation
+    if (!formData.gender || !genderOptions.some(opt => opt.value === formData.gender)) {
+      newErrors.gender = "Please select a valid gender";
     }
 
     setErrors(newErrors);
@@ -135,6 +148,35 @@ const PersonForm = ({ initialData, onSubmit, onCancel, isLoading = false }) => {
         />
         {errors.name && (
           <p className="text-red-500 text-xs mt-1">{errors.name}</p>
+        )}
+      </div>
+
+      {/* Gender Selection */}
+      <div className="space-y-1">
+        <label
+          htmlFor="gender"
+          className="block text-sm font-medium text-gray-700"
+        >
+          Gender <span className="text-red-500">*</span>
+        </label>
+        <select
+          id="gender"
+          name="gender"
+          value={formData.gender}
+          onChange={handleChange}
+          disabled={isLoading}
+          className={`w-full px-3 py-2 border rounded-md ${
+            errors.gender ? "border-red-500" : "border-gray-300"
+          } focus:outline-none focus:ring-2 focus:ring-blue-500`}
+        >
+          {genderOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+        {errors.gender && (
+          <p className="text-red-500 text-xs mt-1">{errors.gender}</p>
         )}
       </div>
 
@@ -270,6 +312,8 @@ PersonForm.propTypes = {
     name: PropTypes.string,
     nameZh: PropTypes.string,
     notes: PropTypes.string,
+    imageId: PropTypes.number,
+    gender: PropTypes.string,
   }),
   onSubmit: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,

@@ -132,7 +132,7 @@ export const personApi = {
   },
 
   /**
-   * Search persons by name (English or Chinese)
+   * Search persons by name
    * @param {string} query - Search query
    * @returns {Promise<Array>} Search results
    */
@@ -160,7 +160,7 @@ export const relationshipApi = {
   getAll: async () => {
     try {
       const response = await api.get(API_ENDPOINTS.RELATIONSHIPS);
-      return response.data;
+      return { data: response.data || [] };
     } catch (error) {
       console.error("🔥 Error fetching relationships:", error);
       throw error;
@@ -178,7 +178,7 @@ export const relationshipApi = {
         API_ENDPOINTS.RELATIONSHIPS,
         relationshipData
       );
-      return response.data;
+      return { data: response.data };
     } catch (error) {
       console.error("🔥 Error creating relationship:", error);
       throw error;
@@ -193,7 +193,7 @@ export const relationshipApi = {
   getById: async (id) => {
     try {
       const response = await api.get(`${API_ENDPOINTS.RELATIONSHIPS}/${id}`);
-      return response.data;
+      return { data: response.data };
     } catch (error) {
       console.error(`🔥 Error fetching relationship ${id}:`, error);
       throw error;
@@ -212,7 +212,7 @@ export const relationshipApi = {
         `${API_ENDPOINTS.RELATIONSHIPS}/${id}`,
         relationshipData
       );
-      return response.data;
+      return { data: response.data };
     } catch (error) {
       console.error(`🔥 Error updating relationship ${id}:`, error);
       throw error;
@@ -227,7 +227,7 @@ export const relationshipApi = {
   delete: async (id) => {
     try {
       const response = await api.delete(`${API_ENDPOINTS.RELATIONSHIPS}/${id}`);
-      return response.data;
+      return { data: response.data };
     } catch (error) {
       console.error(`🔥 Error deleting relationship ${id}:`, error);
       throw error;
@@ -242,7 +242,7 @@ export const relationshipApi = {
   getByPerson: async (personId) => {
     try {
       const response = await api.get(`${API_ENDPOINTS.RELATIONSHIPS}/person/${personId}`);
-      return response.data;
+      return { data: response.data || [] };
     } catch (error) {
       console.error(`🔥 Error fetching relationships for person ${personId}:`, error);
       throw error;
@@ -250,18 +250,19 @@ export const relationshipApi = {
   },
 
   /**
-   * Validate a relationship
+   * Validate relationship data
    * @param {Object} relationshipData - Relationship data to validate
-   * @returns {Promise<Object>} Validation result
+   * @returns {Promise<boolean>} True if valid
    */
   validateRelationship: async (relationshipData) => {
-    try {
-      const response = await api.post(`${API_ENDPOINTS.RELATIONSHIPS}/validate`, relationshipData);
-      return response.data;
-    } catch (error) {
-      console.error("🔥 Error validating relationship:", error);
-      throw error;
+    const { fromId, toId, type } = relationshipData;
+    if (!fromId || !toId || !type) {
+      throw new Error("Missing required fields: fromId, toId, and type are required");
     }
+    if (fromId === toId) {
+      throw new Error("A person cannot have a relationship with themselves");
+    }
+    return true;
   },
 };
 

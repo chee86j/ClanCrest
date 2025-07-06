@@ -24,6 +24,8 @@ const RelationshipForm = ({
     fromId: '',
     toId: '',
     type: 'parent',
+    dnaConfirmed: false,
+    notes: '',
   });
   const [errors, setErrors] = useState({});
 
@@ -33,15 +35,17 @@ const RelationshipForm = ({
         fromId: initialData.fromId || '',
         toId: initialData.toId || '',
         type: initialData.type || 'parent',
+        dnaConfirmed: initialData.dnaConfirmed || false,
+        notes: initialData.notes || '',
       });
     }
   }, [initialData]);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: value,
+      [name]: type === 'checkbox' ? checked : value,
     }));
 
     // Clear error when field is edited
@@ -70,6 +74,10 @@ const RelationshipForm = ({
 
     if (!formData.type) {
       newErrors.type = 'Please select a relationship type';
+    }
+
+    if (formData.notes && formData.notes.length > 1000) {
+      newErrors.notes = 'Notes cannot exceed 1000 characters';
     }
 
     setErrors(newErrors);
@@ -174,6 +182,49 @@ const RelationshipForm = ({
         )}
       </div>
 
+      {/* DNA Confirmation */}
+      <div className="space-y-1">
+        <div className="flex items-center">
+          <input
+            type="checkbox"
+            id="dnaConfirmed"
+            name="dnaConfirmed"
+            checked={formData.dnaConfirmed}
+            onChange={handleChange}
+            disabled={isLoading}
+            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+          />
+          <label htmlFor="dnaConfirmed" className="ml-2 block text-sm text-gray-700">
+            DNA Confirmed
+          </label>
+        </div>
+        <p className="text-xs text-gray-500">
+          Check this if the relationship is confirmed by DNA testing
+        </p>
+      </div>
+
+      {/* Relationship Notes */}
+      <div className="space-y-1">
+        <label htmlFor="notes" className="block text-sm font-medium text-gray-700">
+          Notes <span className="text-gray-400">(Optional)</span>
+        </label>
+        <textarea
+          id="notes"
+          name="notes"
+          value={formData.notes}
+          onChange={handleChange}
+          disabled={isLoading}
+          rows={3}
+          className={`w-full px-3 py-2 border rounded-md ${
+            errors.notes ? 'border-red-500' : 'border-gray-300'
+          } focus:outline-none focus:ring-2 focus:ring-blue-500`}
+          placeholder="Add any notes about this relationship"
+        />
+        {errors.notes && (
+          <p className="text-red-500 text-xs mt-1">{errors.notes}</p>
+        )}
+      </div>
+
       {/* Form Actions */}
       <div className="flex justify-end space-x-3 pt-3">
         <button
@@ -227,6 +278,8 @@ RelationshipForm.propTypes = {
     fromId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
     toId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
     type: PropTypes.string,
+    dnaConfirmed: PropTypes.bool,
+    notes: PropTypes.string,
   }),
   onSubmit: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,

@@ -40,13 +40,16 @@ const handleGoogleAuth = errorHandler(async (req, res) => {
   }
 
   try {
-    // Verify Google token
-    const ticket = await client.verifyIdToken({
-      idToken: token,
-      audience: process.env.GOOGLE_CLIENT_ID
-    });
+    // Get user info from Google using the access token
+    const response = await fetch(
+      `https://www.googleapis.com/oauth2/v2/userinfo?access_token=${token}`
+    );
+    
+    if (!response.ok) {
+      throw new Error('Failed to get user info from Google');
+    }
 
-    const googleUser = ticket.getPayload();
+    const googleUser = await response.json();
     console.log("✅ Google user verified:", googleUser.email);
 
     // Find or create user
@@ -59,7 +62,7 @@ const handleGoogleAuth = errorHandler(async (req, res) => {
         data: {
           email: googleUser.email,
           name: googleUser.name,
-          googleId: googleUser.sub,
+          googleId: googleUser.id,
           picture: googleUser.picture
         }
       });
@@ -69,7 +72,7 @@ const handleGoogleAuth = errorHandler(async (req, res) => {
       user = await prisma.user.update({
         where: { id: user.id },
         data: {
-          googleId: googleUser.sub,
+          googleId: googleUser.id,
           picture: googleUser.picture,
           name: googleUser.name
         }

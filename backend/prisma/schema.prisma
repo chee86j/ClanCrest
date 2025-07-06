@@ -28,6 +28,7 @@ model Person {
   id                Int           @id @default(autoincrement())
   name             String
   nameZh           String?
+  gender           String?        // 'male', 'female', or 'other'
   notes            String?
   imageId          Int?          // ID of the profile image (1-4)
   createdAt        DateTime      @default(now())
@@ -39,12 +40,14 @@ model Person {
 }
 
 model Relationship {
-  id        Int      @id @default(autoincrement())
-  fromId    Int
-  toId      Int
-  type      String   // parent, child, spouse, sibling
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  from      Person   @relation("FromPerson", fields: [fromId], references: [id])
-  to        Person   @relation("ToPerson", fields: [toId], references: [id])
+  id            Int      @id @default(autoincrement())
+  fromId        Int
+  toId          Int
+  type          String   // parent, child, spouse, sibling
+  dnaConfirmed  Boolean  @default(false)
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  from          Person   @relation("FromPerson", fields: [fromId], references: [id])
+  to            Person   @relation("ToPerson", fields: [toId], references: [id])
 }

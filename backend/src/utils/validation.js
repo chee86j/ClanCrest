@@ -188,6 +188,92 @@ const validateSearchQuery = (query) => {
   };
 };
 
+/**
+ * Validate gender field
+ * @param {string} gender - Gender to validate
+ * @returns {Object} Validation result with isValid and error message
+ */
+const validateGender = (gender) => {
+  const validGenders = ['male', 'female', 'other'];
+  
+  if (!gender || typeof gender !== "string") {
+    return {
+      isValid: false,
+      error: "Gender is required and must be a string",
+    };
+  }
+
+  const normalizedGender = gender.toLowerCase().trim();
+  
+  if (!validGenders.includes(normalizedGender)) {
+    return {
+      isValid: false,
+      error: "Gender must be one of: male, female, other",
+    };
+  }
+
+  return {
+    isValid: true,
+    value: normalizedGender,
+  };
+};
+
+/**
+ * Validate relationship type
+ * @param {string} type - Relationship type to validate
+ * @returns {Object} Validation result with isValid and error message
+ */
+const validateRelationType = (type) => {
+  const validTypes = ['parent', 'child', 'spouse', 'sibling'];
+  
+  if (!type || typeof type !== "string") {
+    return {
+      isValid: false,
+      error: "Relationship type is required and must be a string",
+    };
+  }
+
+  const normalizedType = type.toLowerCase().trim();
+  
+  if (!validTypes.includes(normalizedType)) {
+    return {
+      isValid: false,
+      error: "Invalid relationship type. Must be one of: parent, child, spouse, sibling",
+    };
+  }
+
+  return {
+    isValid: true,
+    value: normalizedType,
+  };
+};
+
+/**
+ * Validate DNA confirmation status
+ * @param {boolean} dnaConfirmed - DNA confirmation status to validate
+ * @returns {Object} Validation result with isValid and error message
+ */
+const validateDnaConfirmed = (dnaConfirmed) => {
+  if (dnaConfirmed === undefined || dnaConfirmed === null) {
+    return {
+      isValid: true,
+      value: false,
+    };
+  }
+
+  if (typeof dnaConfirmed !== "boolean") {
+    return {
+      isValid: false,
+      error: "DNA confirmation status must be a boolean",
+    };
+  }
+
+  return {
+    isValid: true,
+    value: dnaConfirmed,
+  };
+};
+
 module.exports = {
   validatePersonName,
   validateChineseName,
@@ -195,4 +281,7 @@ module.exports = {
   validatePersonId,
   validateImageId,
   validateSearchQuery,
+  validateGender,
+  validateRelationType,
+  validateDnaConfirmed,
 };
