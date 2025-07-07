@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -14,40 +8,41 @@ datasource db {
 }
 
 model User {
-  id            Int       @id @default(autoincrement())
-  email         String    @unique
-  googleId      String?   @unique
-  name          String?
-  picture       String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  persons       Person[]
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  name      String?
+  googleId  String?  @unique
+  picture   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  persons   Person[]
 }
 
 model Person {
-  id                Int           @id @default(autoincrement())
-  name             String
-  nameZh           String?
-  gender           String?        // 'male', 'female', or 'other'
-  notes            String?
-  imageId          Int?          // ID of the profile image (1-4)
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
-  userId           Int?          // Optional to support migration of existing data
-  user             User?         @relation(fields: [userId], references: [id])
-  relationshipsFrom Relationship[] @relation("FromPerson")
-  relationshipsTo   Relationship[] @relation("ToPerson")
+  id                Int            @id @default(autoincrement())
+  name              String
+  nameZh            String?
+  gender            String?
+  notes             String?
+  imageId           Int?
+  userId            Int?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  user              User?          @relation(fields: [userId], references: [id])
+  relationshipsFrom Relationship[] @relation("FromRelationships")
+  relationshipsTo   Relationship[] @relation("ToRelationships")
 }
 
 model Relationship {
-  id            Int      @id @default(autoincrement())
-  fromId        Int
-  toId          Int
-  type          String   // parent, child, spouse, sibling
-  dnaConfirmed  Boolean  @default(false)
-  notes         String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  from          Person   @relation("FromPerson", fields: [fromId], references: [id])
-  to            Person   @relation("ToPerson", fields: [toId], references: [id])
+  id        Int      @id @default(autoincrement())
+  fromId    Int
+  toId      Int
+  type      String
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  from      Person   @relation("FromRelationships", fields: [fromId], references: [id], onDelete: Cascade)
+  to        Person   @relation("ToRelationships", fields: [toId], references: [id], onDelete: Cascade)
+
+  @@unique([fromId, toId])
 }

@@ -30,10 +30,10 @@ const genderStyles = {
   },
 };
 
-// Edge style based on DNA confirmation
-const getEdgeStyle = (dnaConfirmed) => ({
-  stroke: dnaConfirmed ? "#4caf50" : "#9e9e9e",
-  strokeWidth: dnaConfirmed ? 2 : 1,
+// Edge style
+const getEdgeStyle = () => ({
+  stroke: '#9e9e9e',
+  strokeWidth: 1,
 });
 
 /**
@@ -144,17 +144,11 @@ const createRelationshipEdge = (relationship) => ({
   label: (
     <div className="bg-white px-2 py-1 rounded shadow-sm">
       <span>{relationship.type}</span>
-      {relationship.dnaConfirmed && (
-        <span className="ml-1 text-green-600" title="DNA Confirmed">
-          ✓
-        </span>
-      )}
     </div>
   ),
-  type: "smoothstep",
-  style: getEdgeStyle(relationship.dnaConfirmed),
-  animated: relationship.dnaConfirmed,
-  data: relationship, // Store the full relationship object for easy access
+  type: 'smoothstep',
+  style: getEdgeStyle(),
+  data: relationship,
 });
 
 const FamilyTree = () => {
@@ -353,10 +347,6 @@ const FamilyTree = () => {
               <div className="flex items-center">
                 <div className="w-3 h-3 rounded-full bg-purple-100 border border-purple-500 mr-2" />
                 <span>Other</span>
-              </div>
-              <div className="flex items-center mt-2">
-                <div className="w-4 h-0 border-t-2 border-green-500 mr-2" />
-                <span>DNA Confirmed</span>
               </div>
             </div>
           </Panel>

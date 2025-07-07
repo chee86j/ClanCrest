@@ -126,11 +126,6 @@ const NodeEditor = ({
                           </span>
                           <span className="text-gray-500 mx-2">•</span>
                           <span className="text-gray-600">{rel.type}</span>
-                          {rel.dnaConfirmed && (
-                            <span className="ml-2 text-green-600" title="DNA Confirmed">
-                              ✓
-                            </span>
-                          )}
                         </div>
                         <div className="flex space-x-2">
                           <button
