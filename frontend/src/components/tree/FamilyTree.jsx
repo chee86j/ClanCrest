@@ -11,8 +11,10 @@ import ReactFlow, {
 import "reactflow/dist/style.css";
 import { usePersons } from "../../hooks/usePersons";
 import { useRelationships } from "../../hooks/useRelationships";
+import useContextMenu from "../../hooks/useContextMenu";
 import KinshipFinder from "./KinshipFinder";
 import NodeEditor from "./NodeEditor";
+import ContextMenu from "./ContextMenu";
 
 // Node style based on gender
 const genderStyles = {
@@ -174,6 +176,9 @@ const FamilyTree = () => {
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  const { contextMenu, openContextMenu, closeContextMenu } = useContextMenu();
+  const [selectedPerson, setSelectedPerson] = useState(null);
+
   // Calculate node positions
   const nodePositions = useMemo(
     () => calculateNodePositions(persons, relationships),
@@ -285,6 +290,110 @@ const FamilyTree = () => {
     );
   }, [selectedNode, relationships]);
 
+  // Handle node context menu
+  const handleNodeContextMenu = useCallback((event, node) => {
+    event.preventDefault();
+    setSelectedPerson(node.data.person);
+    openContextMenu(event, { type: 'node', node });
+  }, [openContextMenu]);
+
+  // Handle canvas context menu
+  const handlePaneContextMenu = useCallback((event) => {
+    event.preventDefault();
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const position = {
+      x: event.clientX - bounds.left,
+      y: event.clientY - bounds.top,
+    };
+    openContextMenu(event, { type: 'pane', position });
+  }, [openContextMenu]);
+
+  // Generate context menu items based on context
+  const getContextMenuItems = useCallback(() => {
+    if (!contextMenu.data) return [];
+
+    if (contextMenu.data.type === 'node') {
+      const person = contextMenu.data.node.data.person;
+      return [
+        {
+          id: 'edit',
+          label: 'Edit Person',
+          onClick: () => {
+            setSelectedNode(contextMenu.data.node);
+            setIsEditorOpen(true);
+          },
+          icon: <span className="material-icons text-blue-500">edit</span>,
+        },
+        {
+          id: 'add-parent',
+          label: 'Add Parent',
+          onClick: () => handleAddRelationship({
+            toId: person.id,
+            type: 'parent',
+          }),
+          icon: <span className="material-icons text-green-500">person_add</span>,
+        },
+        {
+          id: 'add-child',
+          label: 'Add Child',
+          onClick: () => handleAddRelationship({
+            fromId: person.id,
+            type: 'child',
+          }),
+          icon: <span className="material-icons text-green-500">child_care</span>,
+        },
+        {
+          id: 'add-spouse',
+          label: 'Add Spouse',
+          onClick: () => handleAddRelationship({
+            fromId: person.id,
+            type: 'spouse',
+          }),
+          icon: <span className="material-icons text-red-500">favorite</span>,
+        },
+        {
+          id: 'add-sibling',
+          label: 'Add Sibling',
+          onClick: () => handleAddRelationship({
+            fromId: person.id,
+            type: 'sibling',
+          }),
+          icon: <span className="material-icons text-purple-500">people</span>,
+        },
+        {
+          id: 'delete',
+          label: 'Delete Person',
+          onClick: () => handleDeletePerson(person.id),
+          icon: <span className="material-icons text-red-500">delete</span>,
+        },
+      ];
+    }
+
+    if (contextMenu.data.type === 'pane') {
+      return [
+        {
+          id: 'add-person',
+          label: 'Add New Person',
+          onClick: () => {
+            setSelectedNode(null);
+            setIsEditorOpen(true);
+          },
+          icon: <span className="material-icons text-green-500">person_add</span>,
+        },
+        {
+          id: 'center',
+          label: 'Center View',
+          onClick: () => {
+            // TODO: Implement center view functionality
+          },
+          icon: <span className="material-icons text-blue-500">center_focus_strong</span>,
+        },
+      ];
+    }
+
+    return [];
+  }, [contextMenu.data, handleAddRelationship, handleDeletePerson]);
+
   // Loading state
   if (personsLoading || relationshipsLoading) {
     return (
@@ -317,41 +426,30 @@ const FamilyTree = () => {
   }
 
   return (
-    <div className="space-y-8">
-      <div style={{ width: "100%", height: "500px" }}>
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
-          onNodeClick={onNodeClick}
-          fitView
-          minZoom={0.5}
-          maxZoom={1.5}
-          defaultViewport={{ x: 0, y: 0, zoom: 1 }}
-        >
-          <Controls />
-          <MiniMap />
-          <Background variant="dots" gap={12} size={1} />
-          <Panel position="top-left" className="bg-white p-2 rounded shadow">
-            <div className="text-sm space-y-1">
-              <div className="flex items-center">
-                <div className="w-3 h-3 rounded-full bg-blue-100 border border-blue-500 mr-2" />
-                <span>Male</span>
-              </div>
-              <div className="flex items-center">
-                <div className="w-3 h-3 rounded-full bg-pink-100 border border-pink-500 mr-2" />
-                <span>Female</span>
-              </div>
-              <div className="flex items-center">
-                <div className="w-3 h-3 rounded-full bg-purple-100 border border-purple-500 mr-2" />
-                <span>Other</span>
-              </div>
-            </div>
-          </Panel>
-        </ReactFlow>
-      </div>
+    <div className="w-full h-full relative">
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onNodeContextMenu={handleNodeContextMenu}
+        onPaneContextMenu={handlePaneContextMenu}
+        onClick={closeContextMenu}
+        fitView
+      >
+        <Controls />
+        <MiniMap />
+        <Background variant="dots" gap={12} size={1} />
+        
+        <ContextMenu
+          isOpen={contextMenu.isOpen}
+          x={contextMenu.x}
+          y={contextMenu.y}
+          onClose={closeContextMenu}
+          items={getContextMenuItems()}
+          title={contextMenu.data?.type === 'node' ? 'Person Actions' : 'Tree Actions'}
+        />
+      </ReactFlow>
 
       {isEditorOpen && selectedNode && (
         <NodeEditor
