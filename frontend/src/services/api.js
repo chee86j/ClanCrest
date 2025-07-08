@@ -117,6 +117,25 @@ export const personApi = {
   },
 
   /**
+   * Update a person's position
+   * @param {number} id - Person ID
+   * @param {Object} position - Position data {positionX, positionY}
+   * @returns {Promise<Object>} Updated person
+   */
+  updatePosition: async (id, position) => {
+    try {
+      const response = await api.patch(
+        `${API_ENDPOINTS.PERSONS}/${id}/position`,
+        position
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`🔥 Error updating position for person ${id}:`, error);
+      throw error;
+    }
+  },
+
+  /**
    * Delete a person
    * @param {number} id - Person ID
    * @returns {Promise<Object>} Deletion status
@@ -241,10 +260,15 @@ export const relationshipApi = {
    */
   getByPerson: async (personId) => {
     try {
-      const response = await api.get(`${API_ENDPOINTS.RELATIONSHIPS}/person/${personId}`);
+      const response = await api.get(
+        `${API_ENDPOINTS.RELATIONSHIPS}/person/${personId}`
+      );
       return { data: response.data || [] };
     } catch (error) {
-      console.error(`🔥 Error fetching relationships for person ${personId}:`, error);
+      console.error(
+        `🔥 Error fetching relationships for person ${personId}:`,
+        error
+      );
       throw error;
     }
   },
@@ -257,7 +281,9 @@ export const relationshipApi = {
   validateRelationship: async (relationshipData) => {
     const { fromId, toId, type } = relationshipData;
     if (!fromId || !toId || !type) {
-      throw new Error("Missing required fields: fromId, toId, and type are required");
+      throw new Error(
+        "Missing required fields: fromId, toId, and type are required"
+      );
     }
     if (fromId === toId) {
       throw new Error("A person cannot have a relationship with themselves");

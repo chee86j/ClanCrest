@@ -17,13 +17,13 @@ import PersonForm from "./PersonForm";
  * @param {string} props.error - Error message if any
  */
 const PersonList = ({
-  persons,
+  persons = [],
   selectedPerson,
   onCreatePerson,
   onUpdatePerson,
   onDeletePerson,
   onSelectPerson,
-  isLoading,
+  isLoading = false,
   error,
 }) => {
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -233,11 +233,6 @@ PersonList.propTypes = {
   onSelectPerson: PropTypes.func.isRequired,
   isLoading: PropTypes.bool,
   error: PropTypes.string,
-};
-
-PersonList.defaultProps = {
-  persons: [],
-  isLoading: false,
 };
 
 export default PersonList;

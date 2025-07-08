@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import ReactFlow, {
   MiniMap,
   Controls,
@@ -34,7 +34,7 @@ const genderStyles = {
 
 // Edge style
 const getEdgeStyle = () => ({
-  stroke: '#9e9e9e',
+  stroke: "#9e9e9e",
   strokeWidth: 1,
 });
 
@@ -49,13 +49,16 @@ const calculateNodePositions = (persons, relationships) => {
   const generations = {};
   const processed = new Set();
 
+  // Ensure relationships is an array
+  const relationshipsArray = Array.isArray(relationships) ? relationships : [];
+
   // Find root nodes (persons without parents)
   const hasParent = new Set(
-    relationships
+    relationshipsArray
       .filter((r) => r.type === "child")
       .map((r) => r.fromId.toString())
   );
-  
+
   const rootNodes = persons
     .filter((p) => !hasParent.has(p.id.toString()))
     .map((p) => p.id.toString());
@@ -65,13 +68,13 @@ const calculateNodePositions = (persons, relationships) => {
   while (queue.length > 0) {
     const { id, generation } = queue.shift();
     if (processed.has(id)) continue;
-    
+
     processed.add(id);
     if (!generations[generation]) generations[generation] = [];
     generations[generation].push(id);
 
     // Add children to queue
-    const childRelations = relationships.filter(
+    const childRelations = relationshipsArray.filter(
       (r) => r.fromId.toString() === id && r.type === "parent"
     );
     childRelations.forEach((r) => {
@@ -79,7 +82,7 @@ const calculateNodePositions = (persons, relationships) => {
     });
 
     // Add siblings to same generation
-    const siblingRelations = relationships.filter(
+    const siblingRelations = relationshipsArray.filter(
       (r) => r.fromId.toString() === id && r.type === "sibling"
     );
     siblingRelations.forEach((r) => {
@@ -113,7 +116,10 @@ const createPersonNode = (person, position) => ({
   type: "default",
   data: {
     label: (
-      <div className="text-center p-2 rounded-lg" style={genderStyles[person.gender || "other"]}>
+      <div
+        className="text-center p-2 rounded-lg"
+        style={genderStyles[person.gender || "other"]}
+      >
         <div className="font-medium">{person.name}</div>
         {person.nameZh && (
           <div className="text-sm text-gray-500">{person.nameZh}</div>
@@ -132,6 +138,7 @@ const createPersonNode = (person, position) => ({
     background: "transparent",
     border: "none",
   },
+  draggable: true, // Enable dragging for all nodes
 });
 
 /**
@@ -148,10 +155,21 @@ const createRelationshipEdge = (relationship) => ({
       <span>{relationship.type}</span>
     </div>
   ),
-  type: 'smoothstep',
+  type: "smoothstep",
   style: getEdgeStyle(),
   data: relationship,
 });
+
+// Debounce function to limit API calls during dragging
+const debounce = (func, delay) => {
+  let timeoutId;
+  return (...args) => {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => {
+      func(...args);
+    }, delay);
+  };
+};
 
 const FamilyTree = () => {
   const {
@@ -160,6 +178,7 @@ const FamilyTree = () => {
     error: personsError,
     updatePerson,
     deletePerson,
+    updatePersonPosition,
   } = usePersons();
   const {
     relationships = [],
@@ -179,15 +198,50 @@ const FamilyTree = () => {
   const { contextMenu, openContextMenu, closeContextMenu } = useContextMenu();
   const [selectedPerson, setSelectedPerson] = useState(null);
 
-  // Calculate node positions
-  const nodePositions = useMemo(
-    () => calculateNodePositions(persons, relationships),
-    [persons, relationships]
+  // Create a ref for the debounced save function
+  const debouncedSaveRef = useRef(
+    debounce((nodeId, position) => {
+      const personId = parseInt(nodeId);
+      updatePersonPosition(personId, {
+        positionX: position.x,
+        positionY: position.y,
+      });
+    }, 500) // 500ms debounce delay
   );
+
+  // Calculate node positions
+  const nodePositions = useMemo(() => {
+    // Ensure persons is an array
+    const personsArray = Array.isArray(persons) ? persons : [];
+
+    // Create a map of saved positions from persons data
+    const savedPositions = {};
+    personsArray.forEach((person) => {
+      if (person.positionX !== null && person.positionY !== null) {
+        savedPositions[person.id.toString()] = {
+          x: person.positionX,
+          y: person.positionY,
+        };
+      }
+    });
+
+    // Calculate default positions
+    const calculatedPositions = calculateNodePositions(
+      personsArray,
+      relationships
+    );
+
+    // Merge saved positions with calculated ones (saved take precedence)
+    return {
+      ...calculatedPositions,
+      ...savedPositions,
+    };
+  }, [persons, relationships]);
 
   // Convert persons to nodes with calculated positions
   useEffect(() => {
-    if (persons?.length > 0) {
+    // Ensure persons is an array and nodePositions is an object
+    if (Array.isArray(persons) && persons.length > 0 && nodePositions) {
       const personNodes = persons.map((person) =>
         createPersonNode(person, nodePositions[person.id.toString()])
       );
@@ -199,7 +253,8 @@ const FamilyTree = () => {
 
   // Convert relationships to edges
   useEffect(() => {
-    if (relationships?.length > 0) {
+    // Ensure relationships is an array
+    if (Array.isArray(relationships) && relationships.length > 0) {
       const relationshipEdges = relationships.map(createRelationshipEdge);
       setEdges(relationshipEdges);
     } else {
@@ -211,6 +266,14 @@ const FamilyTree = () => {
     (params) => setEdges((eds) => addEdge(params, eds)),
     [setEdges]
   );
+
+  // Handle node drag
+  const handleNodeDragStop = useCallback((event, node) => {
+    if (node && node.id && node.position) {
+      // Save the node position to the backend
+      debouncedSaveRef.current(node.id, node.position);
+    }
+  }, []);
 
   // Node click handler
   const onNodeClick = useCallback((event, node) => {
@@ -285,39 +348,47 @@ const FamilyTree = () => {
   // Get relationships for selected person
   const selectedPersonRelationships = useMemo(() => {
     if (!selectedNode) return [];
+    if (!Array.isArray(relationships)) return [];
+
     return relationships.filter(
       (rel) => rel.fromId === selectedNode.id || rel.toId === selectedNode.id
     );
   }, [selectedNode, relationships]);
 
   // Handle node context menu
-  const handleNodeContextMenu = useCallback((event, node) => {
-    event.preventDefault();
-    setSelectedPerson(node.data.person);
-    openContextMenu(event, { type: 'node', node });
-  }, [openContextMenu]);
+  const handleNodeContextMenu = useCallback(
+    (event, node) => {
+      event.preventDefault();
+      setSelectedPerson(node.data.person);
+      openContextMenu(event, { type: "node", node });
+    },
+    [openContextMenu]
+  );
 
   // Handle canvas context menu
-  const handlePaneContextMenu = useCallback((event) => {
-    event.preventDefault();
-    const bounds = event.currentTarget.getBoundingClientRect();
-    const position = {
-      x: event.clientX - bounds.left,
-      y: event.clientY - bounds.top,
-    };
-    openContextMenu(event, { type: 'pane', position });
-  }, [openContextMenu]);
+  const handlePaneContextMenu = useCallback(
+    (event) => {
+      event.preventDefault();
+      const bounds = event.currentTarget.getBoundingClientRect();
+      const position = {
+        x: event.clientX - bounds.left,
+        y: event.clientY - bounds.top,
+      };
+      openContextMenu(event, { type: "pane", position });
+    },
+    [openContextMenu]
+  );
 
   // Generate context menu items based on context
   const getContextMenuItems = useCallback(() => {
     if (!contextMenu.data) return [];
 
-    if (contextMenu.data.type === 'node') {
+    if (contextMenu.data.type === "node") {
       const person = contextMenu.data.node.data.person;
       return [
         {
-          id: 'edit',
-          label: 'Edit Person',
+          id: "edit",
+          label: "Edit Person",
           onClick: () => {
             setSelectedNode(contextMenu.data.node);
             setIsEditorOpen(true);
@@ -325,68 +396,82 @@ const FamilyTree = () => {
           icon: <span className="material-icons text-blue-500">edit</span>,
         },
         {
-          id: 'add-parent',
-          label: 'Add Parent',
-          onClick: () => handleAddRelationship({
-            toId: person.id,
-            type: 'parent',
-          }),
-          icon: <span className="material-icons text-green-500">person_add</span>,
+          id: "add-parent",
+          label: "Add Parent",
+          onClick: () =>
+            handleAddRelationship({
+              toId: person.id,
+              type: "parent",
+            }),
+          icon: (
+            <span className="material-icons text-green-500">person_add</span>
+          ),
         },
         {
-          id: 'add-child',
-          label: 'Add Child',
-          onClick: () => handleAddRelationship({
-            fromId: person.id,
-            type: 'child',
-          }),
-          icon: <span className="material-icons text-green-500">child_care</span>,
+          id: "add-child",
+          label: "Add Child",
+          onClick: () =>
+            handleAddRelationship({
+              fromId: person.id,
+              type: "child",
+            }),
+          icon: (
+            <span className="material-icons text-green-500">child_care</span>
+          ),
         },
         {
-          id: 'add-spouse',
-          label: 'Add Spouse',
-          onClick: () => handleAddRelationship({
-            fromId: person.id,
-            type: 'spouse',
-          }),
+          id: "add-spouse",
+          label: "Add Spouse",
+          onClick: () =>
+            handleAddRelationship({
+              fromId: person.id,
+              type: "spouse",
+            }),
           icon: <span className="material-icons text-red-500">favorite</span>,
         },
         {
-          id: 'add-sibling',
-          label: 'Add Sibling',
-          onClick: () => handleAddRelationship({
-            fromId: person.id,
-            type: 'sibling',
-          }),
+          id: "add-sibling",
+          label: "Add Sibling",
+          onClick: () =>
+            handleAddRelationship({
+              fromId: person.id,
+              type: "sibling",
+            }),
           icon: <span className="material-icons text-purple-500">people</span>,
         },
         {
-          id: 'delete',
-          label: 'Delete Person',
+          id: "delete",
+          label: "Delete Person",
           onClick: () => handleDeletePerson(person.id),
           icon: <span className="material-icons text-red-500">delete</span>,
         },
       ];
     }
 
-    if (contextMenu.data.type === 'pane') {
+    if (contextMenu.data.type === "pane") {
       return [
         {
-          id: 'add-person',
-          label: 'Add New Person',
+          id: "add-person",
+          label: "Add New Person",
           onClick: () => {
             setSelectedNode(null);
             setIsEditorOpen(true);
           },
-          icon: <span className="material-icons text-green-500">person_add</span>,
+          icon: (
+            <span className="material-icons text-green-500">person_add</span>
+          ),
         },
         {
-          id: 'center',
-          label: 'Center View',
+          id: "center",
+          label: "Center View",
           onClick: () => {
             // TODO: Implement center view functionality
           },
-          icon: <span className="material-icons text-blue-500">center_focus_strong</span>,
+          icon: (
+            <span className="material-icons text-blue-500">
+              center_focus_strong
+            </span>
+          ),
         },
       ];
     }
@@ -419,7 +504,8 @@ const FamilyTree = () => {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="text-lg text-gray-600">
-          No family members added yet. Add some people to start building your family tree!
+          No family members added yet. Add some people to start building your
+          family tree!
         </div>
       </div>
     );
@@ -435,19 +521,25 @@ const FamilyTree = () => {
         onNodeContextMenu={handleNodeContextMenu}
         onPaneContextMenu={handlePaneContextMenu}
         onClick={closeContextMenu}
+        onNodeDragStop={handleNodeDragStop}
+        onNodeClick={onNodeClick}
         fitView
       >
         <Controls />
         <MiniMap />
         <Background variant="dots" gap={12} size={1} />
-        
+
         <ContextMenu
           isOpen={contextMenu.isOpen}
           x={contextMenu.x}
           y={contextMenu.y}
           onClose={closeContextMenu}
           items={getContextMenuItems()}
-          title={contextMenu.data?.type === 'node' ? 'Person Actions' : 'Tree Actions'}
+          title={
+            contextMenu.data?.type === "node"
+              ? "Person Actions"
+              : "Tree Actions"
+          }
         />
       </ReactFlow>
 

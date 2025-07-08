@@ -1,5 +1,9 @@
 const { PrismaClient } = require("@prisma/client");
-const { errorHandler, ValidationError, NotFoundError } = require("../utils/errorHandler");
+const {
+  errorHandler,
+  ValidationError,
+  NotFoundError,
+} = require("../utils/errorHandler");
 const {
   validatePersonName,
   validateChineseName,
@@ -134,7 +138,8 @@ const createPerson = errorHandler(async (req, res) => {
 const updatePerson = errorHandler(async (req, res) => {
   const { id } = req.params;
   const userId = req.user.id;
-  const { name, nameZh, notes, imageId, gender } = req.body;
+  const { name, nameZh, notes, imageId, gender, positionX, positionY } =
+    req.body;
 
   // Validate person ID
   const idValidation = validatePersonId(id);
@@ -188,7 +193,10 @@ const updatePerson = errorHandler(async (req, res) => {
       nameZh: chineseNameValidation.value,
       notes: notesValidation.value,
       gender: genderValidation.value,
-      ...(imageId !== undefined && imageId !== null && { imageId: imageIdValidation.value }),
+      ...(imageId !== undefined &&
+        imageId !== null && { imageId: imageIdValidation.value }),
+      ...(positionX !== undefined && { positionX: parseFloat(positionX) }),
+      ...(positionY !== undefined && { positionY: parseFloat(positionY) }),
     },
   });
 
@@ -252,11 +260,11 @@ const searchPersons = errorHandler(async (req, res) => {
     where: {
       userId,
       OR: [
-        { name: { contains: queryValidation.value, mode: 'insensitive' } },
+        { name: { contains: queryValidation.value, mode: "insensitive" } },
         { nameZh: { contains: queryValidation.value } },
       ],
     },
-    orderBy: { name: 'asc' },
+    orderBy: { name: "asc" },
   });
 
   console.log(`✅ Found ${persons.length} matches for "${query}"`);
@@ -267,6 +275,47 @@ const searchPersons = errorHandler(async (req, res) => {
   });
 });
 
+/**
+ * Update a person's position in the family tree
+ */
+const updatePersonPosition = errorHandler(async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user.id;
+  const { positionX, positionY } = req.body;
+
+  // Validate person ID
+  const idValidation = validatePersonId(id);
+  if (!idValidation.isValid) {
+    throw new ValidationError(idValidation.error);
+  }
+
+  // Check if person exists and belongs to user
+  const existingPerson = await prisma.person.findFirst({
+    where: {
+      id: idValidation.value,
+      userId,
+    },
+  });
+
+  if (!existingPerson) {
+    throw new NotFoundError("Person");
+  }
+
+  // Update only position fields
+  const person = await prisma.person.update({
+    where: { id: idValidation.value },
+    data: {
+      positionX: parseFloat(positionX),
+      positionY: parseFloat(positionY),
+    },
+  });
+
+  res.json({
+    success: true,
+    data: person,
+  });
+});
+
 module.exports = {
   getAllPersons,
   getPersonById,
@@ -274,4 +323,5 @@ module.exports = {
   updatePerson,
   deletePerson,
   searchPersons,
+  updatePersonPosition,
 };

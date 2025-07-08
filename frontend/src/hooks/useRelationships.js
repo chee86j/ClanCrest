@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { relationshipApi } from '../services/api';
+import { useState, useEffect, useCallback } from "react";
+import { relationshipApi } from "../services/api";
 
 /**
  * Custom hook for managing relationships data
@@ -20,9 +20,11 @@ export const useRelationships = () => {
 
     try {
       const response = await relationshipApi.getAll();
-      setRelationships(response.data);
+      // Extract the data array from the response
+      setRelationships(response.data || []);
     } catch (err) {
-      setError(err.message || 'Failed to fetch relationships');
+      setError(err.message || "Failed to fetch relationships");
+      setRelationships([]); // Set to empty array on error
     } finally {
       setLoading(false);
     }
@@ -39,12 +41,13 @@ export const useRelationships = () => {
     try {
       // Validate relationship before creating
       await relationshipApi.validateRelationship(relationshipData);
-      
+
       const response = await relationshipApi.create(relationshipData);
-      setRelationships(prev => [...prev, response.data]);
-      return response.data;
+      // Make sure we're adding the actual relationship data
+      setRelationships((prev) => [...prev, response.data.data]);
+      return response.data.data;
     } catch (err) {
-      setError(err.message || 'Failed to create relationship');
+      setError(err.message || "Failed to create relationship");
       throw err;
     } finally {
       setLoading(false);
@@ -56,52 +59,59 @@ export const useRelationships = () => {
    * @param {number} id - Relationship ID
    * @param {Object} relationshipData - Updated relationship data
    */
-  const updateRelationship = useCallback(async (id, relationshipData) => {
-    setLoading(true);
-    setError(null);
+  const updateRelationship = useCallback(
+    async (id, relationshipData) => {
+      setLoading(true);
+      setError(null);
 
-    try {
-      // Validate relationship before updating
-      await relationshipApi.validateRelationship({ ...relationshipData, id });
-      
-      const response = await relationshipApi.update(id, relationshipData);
-      setRelationships(prev => 
-        prev.map(rel => rel.id === id ? response.data : rel)
-      );
-      if (selectedRelationship?.id === id) {
-        setSelectedRelationship(response.data);
+      try {
+        // Validate relationship before updating
+        await relationshipApi.validateRelationship({ ...relationshipData, id });
+
+        const response = await relationshipApi.update(id, relationshipData);
+        // Make sure we're updating with the actual relationship data
+        setRelationships((prev) =>
+          prev.map((rel) => (rel.id === id ? response.data.data : rel))
+        );
+        if (selectedRelationship?.id === id) {
+          setSelectedRelationship(response.data.data);
+        }
+        return response.data.data;
+      } catch (err) {
+        setError(err.message || "Failed to update relationship");
+        throw err;
+      } finally {
+        setLoading(false);
       }
-      return response.data;
-    } catch (err) {
-      setError(err.message || 'Failed to update relationship');
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedRelationship]);
+    },
+    [selectedRelationship]
+  );
 
   /**
    * Delete a relationship
    * @param {number} id - Relationship ID
    */
-  const deleteRelationship = useCallback(async (id) => {
-    setLoading(true);
-    setError(null);
+  const deleteRelationship = useCallback(
+    async (id) => {
+      setLoading(true);
+      setError(null);
 
-    try {
-      await relationshipApi.delete(id);
-      setRelationships(prev => prev.filter(rel => rel.id !== id));
-      if (selectedRelationship?.id === id) {
-        setSelectedRelationship(null);
+      try {
+        await relationshipApi.delete(id);
+        setRelationships((prev) => prev.filter((rel) => rel.id !== id));
+        if (selectedRelationship?.id === id) {
+          setSelectedRelationship(null);
+        }
+        return true;
+      } catch (err) {
+        setError(err.message || "Failed to delete relationship");
+        throw err;
+      } finally {
+        setLoading(false);
       }
-      return true;
-    } catch (err) {
-      setError(err.message || 'Failed to delete relationship');
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedRelationship]);
+    },
+    [selectedRelationship]
+  );
 
   /**
    * Get relationships for a specific person
@@ -113,9 +123,9 @@ export const useRelationships = () => {
 
     try {
       const response = await relationshipApi.getByPerson(personId);
-      return response.data;
+      return response.data.data || [];
     } catch (err) {
-      setError(err.message || 'Failed to fetch person relationships');
+      setError(err.message || "Failed to fetch person relationships");
       throw err;
     } finally {
       setLoading(false);
@@ -147,4 +157,4 @@ export const useRelationships = () => {
     selectRelationship,
     refreshRelationships: fetchRelationships,
   };
-}; 
+};

@@ -167,6 +167,28 @@ const usePersons = () => {
     setSelectedPerson(person);
   }, []);
 
+  /**
+   * Update a person's position in the family tree
+   * @param {number} id - Person ID
+   * @param {Object} position - Position data {positionX, positionY}
+   */
+  const updatePersonPosition = useCallback(async (id, position) => {
+    try {
+      setError(null);
+      const response = await personApi.updatePosition(id, position);
+      setPersons((prev) =>
+        prev.map((person) =>
+          person.id === id ? { ...person, ...position } : person
+        )
+      );
+      return response.data;
+    } catch (err) {
+      console.error("Error in updatePersonPosition:", err);
+      // Don't set error state to avoid UI disruption during drag operations
+      return null;
+    }
+  }, []);
+
   // Fetch persons on initial load
   useEffect(() => {
     fetchPersons();
@@ -187,6 +209,7 @@ const usePersons = () => {
     searchPersons,
     clearSearch,
     selectPerson,
+    updatePersonPosition,
   };
 };
 

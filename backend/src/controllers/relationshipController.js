@@ -1,5 +1,6 @@
-const prisma = require('../prisma');
-const { validateRelationship } = require('../utils/validation');
+const { PrismaClient } = require("@prisma/client");
+const prisma = new PrismaClient();
+const { validateRelationship } = require("../utils/validation");
 
 /**
  * Creates a new relationship between two persons
@@ -10,7 +11,7 @@ const createRelationship = async (req, res) => {
 
     // Get existing relationships for validation
     const existingRelationships = await prisma.relationship.findMany();
-    
+
     // Validate the relationship
     const validationResult = validateRelationship(
       { fromId, toId, type },
@@ -38,9 +39,9 @@ const createRelationship = async (req, res) => {
 
     res.json(relationship);
   } catch (error) {
-    console.error('Error creating relationship:', error);
+    console.error("Error creating relationship:", error);
     res.status(500).json({
-      error: 'Failed to create relationship',
+      error: "Failed to create relationship",
     });
   }
 };
@@ -59,7 +60,7 @@ const updateRelationship = async (req, res) => {
 
     if (!existingRelationship) {
       return res.status(404).json({
-        error: 'Relationship not found',
+        error: "Relationship not found",
       });
     }
 
@@ -103,9 +104,9 @@ const updateRelationship = async (req, res) => {
 
     res.json(relationship);
   } catch (error) {
-    console.error('Error updating relationship:', error);
+    console.error("Error updating relationship:", error);
     res.status(500).json({
-      error: 'Failed to update relationship',
+      error: "Failed to update relationship",
     });
   }
 };
@@ -121,11 +122,11 @@ const deleteRelationship = async (req, res) => {
       where: { id: parseInt(id) },
     });
 
-    res.json({ message: 'Relationship deleted successfully' });
+    res.json({ message: "Relationship deleted successfully" });
   } catch (error) {
-    console.error('Error deleting relationship:', error);
+    console.error("Error deleting relationship:", error);
     res.status(500).json({
-      error: 'Failed to delete relationship',
+      error: "Failed to delete relationship",
     });
   }
 };
@@ -144,9 +145,9 @@ const getRelationships = async (req, res) => {
 
     res.json(relationships);
   } catch (error) {
-    console.error('Error getting relationships:', error);
+    console.error("Error getting relationships:", error);
     res.status(500).json({
-      error: 'Failed to get relationships',
+      error: "Failed to get relationships",
     });
   }
 };
@@ -168,15 +169,42 @@ const getRelationship = async (req, res) => {
 
     if (!relationship) {
       return res.status(404).json({
-        error: 'Relationship not found',
+        error: "Relationship not found",
       });
     }
 
     res.json(relationship);
   } catch (error) {
-    console.error('Error getting relationship:', error);
+    console.error("Error getting relationship:", error);
     res.status(500).json({
-      error: 'Failed to get relationship',
+      error: "Failed to get relationship",
+    });
+  }
+};
+
+/**
+ * Gets all relationships for a specific person
+ */
+const getPersonRelationships = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const personId = parseInt(id);
+
+    const relationships = await prisma.relationship.findMany({
+      where: {
+        OR: [{ fromId: personId }, { toId: personId }],
+      },
+      include: {
+        from: true,
+        to: true,
+      },
+    });
+
+    res.json(relationships);
+  } catch (error) {
+    console.error("Error getting person relationships:", error);
+    res.status(500).json({
+      error: "Failed to get person relationships",
     });
   }
 };
@@ -187,4 +215,5 @@ module.exports = {
   deleteRelationship,
   getRelationships,
   getRelationship,
-}; 
+  getPersonRelationships,
+};

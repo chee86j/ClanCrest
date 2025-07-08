@@ -21,7 +21,13 @@ const imageMap = {
  * @param {Function} props.onSelect - Function called when card is selected
  * @param {boolean} props.isSelected - Whether the card is currently selected
  */
-const PersonCard = ({ person, onEdit, onDelete, onSelect, isSelected }) => {
+const PersonCard = ({
+  person,
+  onEdit,
+  onDelete,
+  onSelect,
+  isSelected = false,
+}) => {
   if (!person) return null;
 
   /**
@@ -159,10 +165,6 @@ PersonCard.propTypes = {
   onDelete: PropTypes.func.isRequired,
   onSelect: PropTypes.func.isRequired,
   isSelected: PropTypes.bool,
-};
-
-PersonCard.defaultProps = {
-  isSelected: false,
 };
 
 export default PersonCard;

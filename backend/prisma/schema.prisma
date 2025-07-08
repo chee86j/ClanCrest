@@ -25,6 +25,8 @@ model Person {
   gender            String?
   notes             String?
   imageId           Int?
+  positionX         Float?
+  positionY         Float?
   userId            Int?
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt

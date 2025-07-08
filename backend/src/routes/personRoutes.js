@@ -8,6 +8,7 @@ const {
   updatePerson,
   deletePerson,
   searchPersons,
+  updatePersonPosition,
 } = require("../controllers/personController");
 
 // Apply authentication middleware to all person routes
@@ -27,6 +28,9 @@ router.post("/", createPerson);
 
 // PUT /api/persons/:id - Update an existing person
 router.put("/:id", updatePerson);
+
+// PATCH /api/persons/:id/position - Update only a person's position
+router.patch("/:id/position", updatePersonPosition);
 
 // DELETE /api/persons/:id - Delete a person and their relationships
 router.delete("/:id", deletePerson);

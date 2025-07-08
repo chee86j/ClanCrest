@@ -4,7 +4,10 @@ const { errorHandler, NotFoundError } = require("../utils/errorHandler");
 const { PrismaClient } = require("@prisma/client");
 const { validateRequiredFields } = require("../utils/validation");
 const { getKinship } = require("../controllers/kinshipController");
-const { handleGoogleAuth, getProfile } = require("../controllers/authController");
+const {
+  handleGoogleAuth,
+  getProfile,
+} = require("../controllers/authController");
 const {
   createRelationship,
   updateRelationship,
@@ -32,7 +35,11 @@ router.use("/persons", personRoutes);
 router.post("/relationships", authMiddleware, createRelationship);
 router.put("/relationships/:id", authMiddleware, updateRelationship);
 router.delete("/relationships/:id", authMiddleware, deleteRelationship);
-router.get("/persons/:id/relationships", authMiddleware, getPersonRelationships);
+router.get(
+  "/persons/:id/relationships",
+  authMiddleware,
+  getPersonRelationships
+);
 
 // Get all relationships for the user
 router.get(

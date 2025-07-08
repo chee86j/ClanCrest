@@ -97,6 +97,22 @@ export const searchPersons = async (query) => {
   }
 };
 
+/**
+ * Update a person's position in the family tree
+ * @param {number} id - Person ID
+ * @param {Object} position - Position data {positionX, positionY}
+ * @returns {Promise} Promise with updated person data
+ */
+export const updatePersonPosition = async (id, position) => {
+  try {
+    const response = await api.patch(`/persons/${id}/position`, position);
+    return response.data;
+  } catch (error) {
+    console.error(`Error updating position for person ${id}:`, error);
+    throw error;
+  }
+};
+
 export default {
   getAllPersons,
   getPersonById,
@@ -104,4 +120,5 @@ export default {
   updatePerson,
   deletePerson,
   searchPersons,
+  updatePersonPosition,
 };
