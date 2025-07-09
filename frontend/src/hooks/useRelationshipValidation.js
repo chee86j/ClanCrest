@@ -8,10 +8,13 @@ import { useRelationships } from './useRelationships';
  * @returns {Object} Validation state and helper functions
  */
 const useRelationshipValidation = (formData) => {
-  const { relationships } = useRelationships();
+  const { relationships: relationshipsData } = useRelationships();
   const [errors, setErrors] = useState({});
   const [suggestions, setSuggestions] = useState({});
   const [isValid, setIsValid] = useState(false);
+  
+  // Ensure relationships is always an array
+  const relationships = Array.isArray(relationshipsData) ? relationshipsData : [];
 
   /**
    * Validates basic form data requirements
@@ -61,11 +64,27 @@ const useRelationshipValidation = (formData) => {
       return {};
     }
 
-    // Check for existing relationship
+    // Check for existing relationship - except for spouse which can be bidirectional
     const hasExistingRelationship = relationships.some(
-      (rel) =>
-        (rel.fromId === parseInt(formData.fromId) && rel.toId === parseInt(formData.toId)) ||
-        (rel.fromId === parseInt(formData.toId) && rel.toId === parseInt(formData.fromId))
+      (rel) => {
+        // Skip checking the current relationship being edited
+        if (formData.id && rel.id === formData.id) return false;
+        
+        // For spouse relationships, check if there's already a spouse relationship between these two people
+        if (formData.type === 'spouse') {
+          return (
+            (rel.type === 'spouse' && 
+             ((rel.fromId === parseInt(formData.fromId) && rel.toId === parseInt(formData.toId)) ||
+              (rel.fromId === parseInt(formData.toId) && rel.toId === parseInt(formData.fromId))))
+          );
+        }
+        
+        // For other relationships, check if any relationship exists between these two people
+        return (
+          (rel.fromId === parseInt(formData.fromId) && rel.toId === parseInt(formData.toId)) ||
+          (rel.fromId === parseInt(formData.toId) && rel.toId === parseInt(formData.fromId))
+        );
+      }
     );
 
     if (hasExistingRelationship && !formData.id) {
@@ -109,10 +128,31 @@ const useRelationshipValidation = (formData) => {
         break;
 
       case 'spouse':
-        // Check if either person already has a spouse
+        // Check if either person already has a spouse (excluding each other)
         const hasSpouse = [...fromRelationships, ...toRelationships].some(
-          (rel) => rel.type === 'spouse'
+          (rel) => {
+            // Skip checking the current relationship being edited
+            if (formData.id && rel.id === formData.id) return false;
+            
+            // Check if this is a spouse relationship with someone other than the selected person
+            if (rel.type === 'spouse') {
+              if (rel.fromId === parseInt(formData.fromId)) {
+                return rel.toId !== parseInt(formData.toId);
+              }
+              if (rel.toId === parseInt(formData.fromId)) {
+                return rel.fromId !== parseInt(formData.toId);
+              }
+              if (rel.fromId === parseInt(formData.toId)) {
+                return rel.toId !== parseInt(formData.fromId);
+              }
+              if (rel.toId === parseInt(formData.toId)) {
+                return rel.fromId !== parseInt(formData.fromId);
+              }
+            }
+            return false;
+          }
         );
+        
         if (hasSpouse) {
           newErrors.type = 'One of the persons already has a spouse';
           newSuggestions.type = 'Please select different persons or update existing spouse relationship';
@@ -137,8 +177,8 @@ const useRelationshipValidation = (formData) => {
         );
 
         if (!shareParent && (fromParents.length > 0 || toParents.length > 0)) {
-          newErrors.type = 'Siblings must share at least one parent';
-          newSuggestions.type = 'Please add parent relationships first';
+          newErrors.type = 'Siblings should share at least one parent';
+          newSuggestions.type = 'Consider adding parent relationships first';
         }
         break;
     }

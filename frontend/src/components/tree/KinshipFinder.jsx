@@ -16,17 +16,32 @@ const KinshipFinder = ({ persons }) => {
     setResult(null);
 
     try {
+      // Get auth token from localStorage
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setError("You must be logged in to use this feature");
+        return;
+      }
+
       const response = await axios.get(
         `${import.meta.env.VITE_BACKEND_URL}/api/kinship`,
         {
           params: { from: fromId, to: toId },
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
         }
       );
       setResult(response.data);
     } catch (err) {
-      setError(
-        err.response?.data?.error || "Failed to fetch kinship relationship"
-      );
+      console.error("Kinship error:", err);
+      if (err.response?.status === 401) {
+        setError("Authentication required. Please log in again.");
+      } else {
+        setError(
+          err.response?.data?.error || "Failed to fetch kinship relationship"
+        );
+      }
     }
   };
 

@@ -316,12 +316,62 @@ const updatePersonPosition = errorHandler(async (req, res) => {
   });
 });
 
+/**
+ * Save layout data
+ */
+const saveLayout = errorHandler(async (req, res) => {
+  const { positions } = req.body;
+  const userId = req.user.id;
+
+  if (!positions || typeof positions !== 'object') {
+    throw new ValidationError('Invalid positions data');
+  }
+
+  // Update or create layout data
+  const layout = await prisma.layoutData.upsert({
+    where: { userId },
+    update: { positions },
+    create: {
+      userId,
+      positions
+    }
+  });
+
+  res.status(200).json({
+    success: true,
+    message: 'Layout saved successfully',
+    layout
+  });
+});
+
+/**
+ * Get layout data
+ */
+const getLayout = errorHandler(async (req, res) => {
+  const userId = req.user.id;
+
+  const layout = await prisma.layoutData.findUnique({
+    where: { userId }
+  });
+
+  if (!layout) {
+    return res.status(200).json({ positions: {} });
+  }
+
+  res.status(200).json({
+    success: true,
+    positions: layout.positions
+  });
+});
+
 module.exports = {
-  getAllPersons,
-  getPersonById,
   createPerson,
+  getPersons: getAllPersons,
+  getPerson: getPersonById,
   updatePerson,
   deletePerson,
   searchPersons,
   updatePersonPosition,
+  saveLayout,
+  getLayout
 };

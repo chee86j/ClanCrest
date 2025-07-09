@@ -3,6 +3,36 @@ import { useAuth } from "../context/AuthContext";
 import { Navigate } from "react-router-dom";
 import FamilyTree from "../components/tree/FamilyTree";
 
+/**
+ * Authentication gate component that shows login prompt for non-authenticated users
+ * @param {Object} props - Component props
+ * @returns {JSX.Element} Component that conditionally renders children or login prompt
+ */
+const AuthGate = ({ children }) => {
+  const { isAuthenticated } = useAuth();
+
+  if (!isAuthenticated) {
+    return (
+      <div className="bg-gray-100 p-8 rounded-lg border-2 border-dashed border-gray-300 flex flex-col items-center justify-center min-h-[400px]">
+        <h3 className="text-xl font-semibold text-gray-700 mb-4">
+          Login Required
+        </h3>
+        <p className="text-gray-600 mb-6 text-center">
+          Please sign in to create and view your family tree
+        </p>
+        <Link
+          to="/auth"
+          className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+        >
+          Sign In
+        </Link>
+      </div>
+    );
+  }
+
+  return children;
+};
+
 const Home = () => {
   const { isAuthenticated } = useAuth();
 
@@ -43,11 +73,17 @@ const Home = () => {
           </div>
         </div>
 
-        <div className="mt-16 bg-white p-6 rounded-lg shadow-lg">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
-            Try Our Interactive Family Tree Builder
-          </h2>
-          <FamilyTree />
+        <div className="flex-1 bg-white rounded-lg shadow-lg overflow-hidden border border-gray-200">
+          <div className="flex flex-col h-full">
+            <div className="p-4 border-b border-gray-200 bg-gray-50">
+              <h2 className="text-2xl font-semibold text-center text-gray-800">Your Family Tree</h2>
+            </div>
+            <div className="flex-1 relative">
+              <AuthGate>
+                <FamilyTree />
+              </AuthGate>
+            </div>
+          </div>
         </div>
 
         <div className="mt-16">

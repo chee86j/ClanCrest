@@ -19,9 +19,36 @@ export const useRelationships = () => {
     setError(null);
 
     try {
-      const response = await relationshipApi.getAll();
-      // Extract the data array from the response
-      setRelationships(response.data || []);
+      const relationships = await relationshipApi.getAll();
+      console.log("API returned relationships:", relationships);
+      
+      // Process relationships to handle spouse relationships
+      let processedRelationships = Array.isArray(relationships) ? relationships : [];
+      
+      // Filter out duplicate spouse relationships for display purposes
+      // We want to show only one edge for each spouse pair
+      const spouseMap = new Map();
+      processedRelationships = processedRelationships.filter(rel => {
+        if (rel.type === 'spouse') {
+          // Create a unique key for this spouse pair
+          const [smallerId, largerId] = [rel.fromId, rel.toId].sort();
+          const key = `spouse-${smallerId}-${largerId}`;
+          
+          // If we've already seen this pair, skip it
+          if (spouseMap.has(key)) {
+            return false;
+          }
+          
+          // Otherwise, mark it as seen and keep it
+          spouseMap.set(key, rel);
+          return true;
+        }
+        // Keep all non-spouse relationships
+        return true;
+      });
+      
+      console.log("Processed relationships:", processedRelationships);
+      setRelationships(processedRelationships);
     } catch (err) {
       setError(err.message || "Failed to fetch relationships");
       setRelationships([]); // Set to empty array on error
@@ -44,15 +71,19 @@ export const useRelationships = () => {
 
       const response = await relationshipApi.create(relationshipData);
       // Make sure we're adding the actual relationship data
-      setRelationships((prev) => [...prev, response.data.data]);
-      return response.data.data;
+      const newRelationship = response?.data || {};
+      
+      // Refresh relationships to get any bidirectional relationships created on the backend
+      await fetchRelationships();
+      
+      return newRelationship;
     } catch (err) {
       setError(err.message || "Failed to create relationship");
       throw err;
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fetchRelationships]);
 
   /**
    * Update an existing relationship
@@ -69,14 +100,16 @@ export const useRelationships = () => {
         await relationshipApi.validateRelationship({ ...relationshipData, id });
 
         const response = await relationshipApi.update(id, relationshipData);
+        
+        // Refresh relationships to get any bidirectional relationships updated on the backend
+        await fetchRelationships();
+        
         // Make sure we're updating with the actual relationship data
-        setRelationships((prev) =>
-          prev.map((rel) => (rel.id === id ? response.data.data : rel))
-        );
+        const updatedRelationship = response?.data || {};
         if (selectedRelationship?.id === id) {
-          setSelectedRelationship(response.data.data);
+          setSelectedRelationship(updatedRelationship);
         }
-        return response.data.data;
+        return updatedRelationship;
       } catch (err) {
         setError(err.message || "Failed to update relationship");
         throw err;
@@ -84,7 +117,7 @@ export const useRelationships = () => {
         setLoading(false);
       }
     },
-    [selectedRelationship]
+    [selectedRelationship, fetchRelationships]
   );
 
   /**
@@ -98,7 +131,10 @@ export const useRelationships = () => {
 
       try {
         await relationshipApi.delete(id);
-        setRelationships((prev) => prev.filter((rel) => rel.id !== id));
+        
+        // Refresh relationships to handle any bidirectional relationships deleted on the backend
+        await fetchRelationships();
+        
         if (selectedRelationship?.id === id) {
           setSelectedRelationship(null);
         }
@@ -110,7 +146,7 @@ export const useRelationships = () => {
         setLoading(false);
       }
     },
-    [selectedRelationship]
+    [selectedRelationship, fetchRelationships]
   );
 
   /**
@@ -123,7 +159,8 @@ export const useRelationships = () => {
 
     try {
       const response = await relationshipApi.getByPerson(personId);
-      return response.data.data || [];
+      const personRelationships = response?.data || [];
+      return Array.isArray(personRelationships) ? personRelationships : [];
     } catch (err) {
       setError(err.message || "Failed to fetch person relationships");
       throw err;

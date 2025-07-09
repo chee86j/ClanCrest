@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 
 /**
@@ -15,6 +15,24 @@ const ContextMenu = ({
   className = '',
 }) => {
   const menuRef = useRef(null);
+  const [position, setPosition] = useState({ left: x, top: y });
+
+  // Calculate position to ensure menu stays within viewport
+  useEffect(() => {
+    if (isOpen && menuRef.current) {
+      const { width, height } = menuRef.current.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+
+      const left = x + width > viewportWidth ? x - width : x;
+      const top = y + height > viewportHeight ? y - height : y;
+
+      setPosition({
+        left: Math.max(0, left),
+        top: Math.max(0, top),
+      });
+    }
+  }, [isOpen, x, y]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -40,31 +58,30 @@ const ContextMenu = ({
     };
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
-
-  // Calculate position to ensure menu stays within viewport
-  const calculatePosition = () => {
-    if (!menuRef.current) return { left: x, top: y };
-
-    const { width, height } = menuRef.current.getBoundingClientRect();
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-
-    const left = x + width > viewportWidth ? x - width : x;
-    const top = y + height > viewportHeight ? y - height : y;
-
-    return {
-      left: Math.max(0, left),
-      top: Math.max(0, top),
-    };
+  // Handle keyboard navigation
+  const handleKeyDown = (event, index) => {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      const nextIndex = index < items.length - 1 ? index + 1 : 0;
+      const nextItem = document.querySelector(`[data-menu-item="${nextIndex}"]`);
+      if (nextItem) nextItem.focus();
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      const prevIndex = index > 0 ? index - 1 : items.length - 1;
+      const prevItem = document.querySelector(`[data-menu-item="${prevIndex}"]`);
+      if (prevItem) prevItem.focus();
+    } else if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      event.target.click();
+    }
   };
 
-  const position = calculatePosition();
+  if (!isOpen) return null;
 
   return (
     <div
       ref={menuRef}
-      className={`absolute z-50 min-w-[200px] bg-white rounded-lg shadow-lg border border-gray-200 py-2 ${className}`}
+      className={`absolute z-50 min-w-[200px] bg-white rounded-lg shadow-xl border border-gray-200 py-2 transform transition-opacity duration-150 opacity-100 ${className}`}
       style={{
         left: position.left,
         top: position.top,
@@ -81,10 +98,12 @@ const ContextMenu = ({
         {items.map((item, index) => (
           <button
             key={item.id || index}
+            data-menu-item={index}
             onClick={() => {
               item.onClick();
               onClose();
             }}
+            onKeyDown={(e) => handleKeyDown(e, index)}
             className={`w-full text-left px-4 py-2 text-sm ${
               item.disabled
                 ? 'text-gray-400 cursor-not-allowed'
@@ -93,15 +112,19 @@ const ContextMenu = ({
             disabled={item.disabled}
             role="menuitem"
             tabIndex={0}
+            title={item.description || item.label}
           >
             {item.icon && (
               <span className="w-5 h-5 flex items-center justify-center">
                 {item.icon}
               </span>
             )}
-            {item.label}
+            <span className="flex-1">{item.label}</span>
             {item.description && (
-              <span className="ml-2 text-xs text-gray-400">{item.description}</span>
+              <span className="ml-2 text-xs text-gray-400 truncate max-w-[120px]">{item.description}</span>
+            )}
+            {item.shortcut && (
+              <span className="ml-2 text-xs text-gray-400">{item.shortcut}</span>
             )}
           </button>
         ))}
@@ -123,6 +146,7 @@ ContextMenu.propTypes = {
       disabled: PropTypes.bool,
       icon: PropTypes.node,
       description: PropTypes.string,
+      shortcut: PropTypes.string,
     })
   ).isRequired,
   title: PropTypes.string,

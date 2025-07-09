@@ -275,22 +275,38 @@ const validateDnaConfirmed = (dnaConfirmed) => {
 };
 
 /**
- * Validates relationship data and enforces relationship rules
+ * Validate relationship data
  * @param {Object} relationship - The relationship to validate
  * @param {Array} existingRelationships - List of existing relationships
  * @returns {Object} Validation result with isValid and error message
  */
 const validateRelationship = (relationship, existingRelationships) => {
-  // Early return if basic data is missing
-  if (!relationship.fromId || !relationship.toId || !relationship.type) {
+  // Ensure relationship is an object
+  if (!relationship || typeof relationship !== 'object') {
     return {
       isValid: false,
-      error: 'Missing required relationship data',
+      error: 'Invalid relationship data',
+    };
+  }
+
+  // Ensure existingRelationships is an array
+  const relationships = Array.isArray(existingRelationships) ? existingRelationships : [];
+
+  // Convert IDs to integers
+  const fromId = parseInt(relationship.fromId);
+  const toId = parseInt(relationship.toId);
+  const relationshipId = relationship.id ? parseInt(relationship.id) : null;
+
+  // Early return if basic data is missing or invalid
+  if (isNaN(fromId) || isNaN(toId) || !relationship.type) {
+    return {
+      isValid: false,
+      error: 'Missing or invalid required relationship data',
     };
   }
 
   // Prevent self-relationships
-  if (relationship.fromId === relationship.toId) {
+  if (fromId === toId) {
     return {
       isValid: false,
       error: 'Cannot create a relationship with self',
@@ -307,23 +323,41 @@ const validateRelationship = (relationship, existingRelationships) => {
   }
 
   // Check for existing relationship between these persons
-  const hasExistingRelationship = existingRelationships.some(
-    (rel) =>
-      (rel.fromId === relationship.fromId && rel.toId === relationship.toId) ||
-      (rel.fromId === relationship.toId && rel.toId === relationship.fromId)
+  const hasExistingRelationship = relationships.some(
+    (rel) => {
+      const relFromId = parseInt(rel.fromId);
+      const relToId = parseInt(rel.toId);
+      const relId = rel.id ? parseInt(rel.id) : null;
+      
+      // Skip comparing with self if updating
+      if (relationshipId && relId === relationshipId) {
+        return false;
+      }
+      
+      return (relFromId === fromId && relToId === toId) ||
+             (relFromId === toId && relToId === fromId);
+    }
   );
 
-  if (hasExistingRelationship && !relationship.id) {
+  if (hasExistingRelationship && !relationshipId) {
     return {
       isValid: false,
       error: 'A relationship already exists between these persons',
     };
   }
 
+  // Create a normalized relationship object for consistency checks
+  const normalizedRelationship = {
+    ...relationship,
+    id: relationshipId,
+    fromId,
+    toId
+  };
+
   // Validate relationship consistency
   const consistencyCheck = checkRelationshipConsistency(
-    relationship,
-    existingRelationships
+    normalizedRelationship,
+    relationships
   );
   if (!consistencyCheck.isValid) {
     return consistencyCheck;
@@ -331,8 +365,8 @@ const validateRelationship = (relationship, existingRelationships) => {
 
   // Check for circular relationships
   const circularCheck = checkCircularRelationships(
-    relationship,
-    existingRelationships
+    normalizedRelationship,
+    relationships
   );
   if (!circularCheck.isValid) {
     return circularCheck;
@@ -348,14 +382,27 @@ const validateRelationship = (relationship, existingRelationships) => {
  * @returns {Object} Validation result
  */
 const checkRelationshipConsistency = (relationship, existingRelationships) => {
-  const { fromId, toId, type } = relationship;
+  // Ensure we have valid IDs and type
+  const fromId = parseInt(relationship.fromId);
+  const toId = parseInt(relationship.toId);
+  const { type, id: relationshipId } = relationship;
+  
+  if (isNaN(fromId) || isNaN(toId) || !type) {
+    return {
+      isValid: false,
+      error: 'Invalid relationship data for consistency check',
+    };
+  }
+
+  // Ensure existingRelationships is an array
+  const relationships = Array.isArray(existingRelationships) ? existingRelationships : [];
 
   // Get all relationships for both persons
-  const fromRelationships = existingRelationships.filter(
-    (rel) => rel.fromId === fromId || rel.toId === fromId
+  const fromRelationships = relationships.filter(
+    (rel) => parseInt(rel.fromId) === fromId || parseInt(rel.toId) === fromId
   );
-  const toRelationships = existingRelationships.filter(
-    (rel) => rel.fromId === toId || rel.toId === toId
+  const toRelationships = relationships.filter(
+    (rel) => parseInt(rel.fromId) === toId || parseInt(rel.toId) === toId
   );
 
   switch (type) {
@@ -363,8 +410,8 @@ const checkRelationshipConsistency = (relationship, existingRelationships) => {
       // Check if the child already has this person as a parent
       const hasParent = toRelationships.some(
         (rel) =>
-          (rel.type === 'parent' && rel.fromId === fromId) ||
-          (rel.type === 'child' && rel.toId === fromId)
+          (rel.type === 'parent' && parseInt(rel.fromId) === fromId) ||
+          (rel.type === 'child' && parseInt(rel.toId) === fromId)
       );
       if (hasParent) {
         return {
@@ -378,8 +425,8 @@ const checkRelationshipConsistency = (relationship, existingRelationships) => {
       // Check if the parent already has this person as a child
       const hasChild = toRelationships.some(
         (rel) =>
-          (rel.type === 'child' && rel.fromId === fromId) ||
-          (rel.type === 'parent' && rel.toId === fromId)
+          (rel.type === 'child' && parseInt(rel.fromId) === fromId) ||
+          (rel.type === 'parent' && parseInt(rel.toId) === fromId)
       );
       if (hasChild) {
         return {
@@ -390,10 +437,31 @@ const checkRelationshipConsistency = (relationship, existingRelationships) => {
       break;
 
     case 'spouse':
-      // Check if either person already has a spouse
+      // Check if either person already has a spouse other than each other
       const hasSpouse = [...fromRelationships, ...toRelationships].some(
-        (rel) => rel.type === 'spouse'
+        (rel) => {
+          // Skip checking the current relationship being edited
+          if (relationshipId && rel.id === relationshipId) {
+            return false;
+          }
+          
+          // Skip checking reciprocal spouse relationships between these two people
+          if (rel.type === 'spouse') {
+            if ((parseInt(rel.fromId) === fromId && parseInt(rel.toId) === toId) ||
+                (parseInt(rel.fromId) === toId && parseInt(rel.toId) === fromId)) {
+              return false;
+            }
+            
+            // Check if either person has a spouse other than each other
+            if (parseInt(rel.fromId) === fromId || parseInt(rel.toId) === fromId ||
+                parseInt(rel.fromId) === toId || parseInt(rel.toId) === toId) {
+              return true;
+            }
+          }
+          return false;
+        }
       );
+      
       if (hasSpouse) {
         return {
           isValid: false,
@@ -403,16 +471,26 @@ const checkRelationshipConsistency = (relationship, existingRelationships) => {
       break;
 
     case 'sibling':
-      // Validate that they share at least one parent
-      const fromParents = getParents(fromId, existingRelationships);
-      const toParents = getParents(toId, existingRelationships);
+      // Get parents for both persons
+      const getParents = (personId) =>
+        relationships
+          .filter(
+            (rel) =>
+              (rel.type === 'parent' && parseInt(rel.toId) === personId) ||
+              (rel.type === 'child' && parseInt(rel.fromId) === personId)
+          )
+          .map((rel) => (rel.type === 'parent' ? parseInt(rel.fromId) : parseInt(rel.toId)));
+
+      const fromParents = getParents(fromId);
+      const toParents = getParents(toId);
       const shareParent = fromParents.some((p1) =>
         toParents.some((p2) => p1 === p2)
       );
-      if (!shareParent) {
+
+      if (!shareParent && (fromParents.length > 0 || toParents.length > 0)) {
         return {
           isValid: false,
-          error: 'Siblings must share at least one parent',
+          error: 'Siblings should share at least one parent',
         };
       }
       break;
@@ -428,24 +506,42 @@ const checkRelationshipConsistency = (relationship, existingRelationships) => {
  * @returns {Object} Validation result
  */
 const checkCircularRelationships = (relationship, existingRelationships) => {
-  const { fromId, toId, type } = relationship;
+  // Ensure we have valid IDs and type
+  const fromId = parseInt(relationship.fromId);
+  const toId = parseInt(relationship.toId);
+  const { type } = relationship;
+  
+  if (isNaN(fromId) || isNaN(toId) || !type) {
+    return {
+      isValid: false,
+      error: 'Invalid relationship data for circular check',
+    };
+  }
 
   if (type === 'spouse' || type === 'sibling') {
     return { isValid: true }; // These types can't create circles
   }
 
+  // Ensure existingRelationships is an array
+  const relationships = Array.isArray(existingRelationships) ? existingRelationships : [];
+
   // Build a graph of parent-child relationships
   const graph = new Map();
-  [...existingRelationships, relationship].forEach((rel) => {
+  [...relationships, relationship].forEach((rel) => {
     if (rel.type !== 'parent' && rel.type !== 'child') return;
 
-    if (!graph.has(rel.fromId)) graph.set(rel.fromId, new Set());
-    if (!graph.has(rel.toId)) graph.set(rel.toId, new Set());
+    const relFromId = parseInt(rel.fromId);
+    const relToId = parseInt(rel.toId);
+    
+    if (isNaN(relFromId) || isNaN(relToId)) return;
+
+    if (!graph.has(relFromId)) graph.set(relFromId, new Set());
+    if (!graph.has(relToId)) graph.set(relToId, new Set());
 
     if (rel.type === 'parent') {
-      graph.get(rel.fromId).add(rel.toId);
+      graph.get(relFromId).add(relToId);
     } else {
-      graph.get(rel.toId).add(rel.fromId);
+      graph.get(relToId).add(relFromId);
     }
   });
 
@@ -488,13 +584,27 @@ const checkCircularRelationships = (relationship, existingRelationships) => {
  * @returns {Array} List of parent IDs
  */
 const getParents = (personId, relationships) => {
-  return relationships
+  // Ensure personId is a number and relationships is an array
+  const id = parseInt(personId);
+  const rels = Array.isArray(relationships) ? relationships : [];
+  
+  if (isNaN(id)) return [];
+
+  return rels
     .filter(
-      (rel) =>
-        (rel.type === 'parent' && rel.toId === personId) ||
-        (rel.type === 'child' && rel.fromId === personId)
+      (rel) => {
+        const relFromId = parseInt(rel.fromId);
+        const relToId = parseInt(rel.toId);
+        
+        return (rel.type === 'parent' && relToId === id) ||
+               (rel.type === 'child' && relFromId === id);
+      }
     )
-    .map((rel) => (rel.type === 'parent' ? rel.fromId : rel.toId));
+    .map((rel) => {
+      const relFromId = parseInt(rel.fromId);
+      const relToId = parseInt(rel.toId);
+      return (rel.type === 'parent' ? relFromId : relToId);
+    });
 };
 
 module.exports = {

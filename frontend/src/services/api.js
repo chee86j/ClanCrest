@@ -166,6 +166,39 @@ export const personApi = {
       throw error;
     }
   },
+  
+  /**
+   * Save layout data
+   * @param {Object} positions - Map of node positions
+   * @returns {Promise<Object>} Response data
+   */
+  saveLayout: async (positions) => {
+    try {
+      console.log("Saving layout data:", positions);
+      const response = await api.patch(
+        `${API_ENDPOINTS.PERSONS}/layout`,
+        { positions }
+      );
+      return response.data;
+    } catch (error) {
+      console.error("🔥 Error saving layout data:", error);
+      throw error;
+    }
+  },
+  
+  /**
+   * Get layout data
+   * @returns {Promise<Object>} Layout data
+   */
+  getLayout: async () => {
+    try {
+      const response = await api.get(`${API_ENDPOINTS.PERSONS}/layout`);
+      return response.data.positions || {};
+    } catch (error) {
+      console.error("🔥 Error getting layout data:", error);
+      return {};
+    }
+  },
 };
 
 /**
@@ -174,32 +207,53 @@ export const personApi = {
 export const relationshipApi = {
   /**
    * Fetch all relationships
-   * @returns {Promise<Array>} List of relationships
+   * @returns {Promise<Object>} Object with data array of relationships
    */
   getAll: async () => {
     try {
       const response = await api.get(API_ENDPOINTS.RELATIONSHIPS);
-      return { data: response.data || [] };
+      console.log("Raw relationship response:", response.data);
+      
+      // Ensure we always return an array
+      let relationships = [];
+      if (Array.isArray(response.data)) {
+        relationships = response.data;
+      } else if (response.data?.data && Array.isArray(response.data.data)) {
+        relationships = response.data.data;
+      }
+      
+      console.log("Processed relationships in API:", relationships);
+      return relationships;
     } catch (error) {
       console.error("🔥 Error fetching relationships:", error);
-      throw error;
+      return []; // Return empty array on error
     }
   },
 
   /**
    * Create a new relationship
    * @param {Object} relationshipData - Relationship data to create
-   * @returns {Promise<Object>} Created relationship
+   * @returns {Promise<Object>} Created relationship data
    */
   create: async (relationshipData) => {
     try {
+      console.log("🔍 Creating relationship with data:", JSON.stringify(relationshipData, null, 2));
+      
       const response = await api.post(
         API_ENDPOINTS.RELATIONSHIPS,
         relationshipData
       );
-      return { data: response.data };
+      
+      console.log("✅ Relationship created successfully:", JSON.stringify(response.data, null, 2));
+      
+      // Return the created relationship data
+      if (response.data?.data) {
+        return response.data.data;
+      }
+      return response.data;
     } catch (error) {
       console.error("🔥 Error creating relationship:", error);
+      console.error("Error response:", error.response?.data);
       throw error;
     }
   },
@@ -212,7 +266,10 @@ export const relationshipApi = {
   getById: async (id) => {
     try {
       const response = await api.get(`${API_ENDPOINTS.RELATIONSHIPS}/${id}`);
-      return { data: response.data };
+      if (response.data?.data) {
+        return response.data.data;
+      }
+      return response.data;
     } catch (error) {
       console.error(`🔥 Error fetching relationship ${id}:`, error);
       throw error;
@@ -223,7 +280,7 @@ export const relationshipApi = {
    * Update an existing relationship
    * @param {number} id - Relationship ID
    * @param {Object} relationshipData - Updated relationship data
-   * @returns {Promise<Object>} Updated relationship
+   * @returns {Promise<Object>} Updated relationship data
    */
   update: async (id, relationshipData) => {
     try {
@@ -231,7 +288,10 @@ export const relationshipApi = {
         `${API_ENDPOINTS.RELATIONSHIPS}/${id}`,
         relationshipData
       );
-      return { data: response.data };
+      if (response.data?.data) {
+        return response.data.data;
+      }
+      return response.data;
     } catch (error) {
       console.error(`🔥 Error updating relationship ${id}:`, error);
       throw error;
@@ -246,7 +306,7 @@ export const relationshipApi = {
   delete: async (id) => {
     try {
       const response = await api.delete(`${API_ENDPOINTS.RELATIONSHIPS}/${id}`);
-      return { data: response.data };
+      return response.data;
     } catch (error) {
       console.error(`🔥 Error deleting relationship ${id}:`, error);
       throw error;
@@ -256,20 +316,31 @@ export const relationshipApi = {
   /**
    * Get relationships by person
    * @param {number} personId - Person ID
-   * @returns {Promise<Array>} List of relationships
+   * @returns {Promise<Array>} Array of relationships
    */
   getByPerson: async (personId) => {
     try {
       const response = await api.get(
         `${API_ENDPOINTS.RELATIONSHIPS}/person/${personId}`
       );
-      return { data: response.data || [] };
+      
+      // Ensure we always return an array
+      let relationships;
+      if (Array.isArray(response.data)) {
+        relationships = response.data;
+      } else if (response.data?.data && Array.isArray(response.data.data)) {
+        relationships = response.data.data;
+      } else {
+        relationships = [];
+      }
+      
+      return relationships;
     } catch (error) {
       console.error(
         `🔥 Error fetching relationships for person ${personId}:`,
         error
       );
-      throw error;
+      return []; // Return empty array on error
     }
   },
 

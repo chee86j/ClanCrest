@@ -13,6 +13,7 @@ import Image04 from "../../assets/images/04.png";
  * @param {Function} props.onSubmit - Function called on form submission with form data
  * @param {Function} props.onCancel - Function called when cancel button is clicked
  * @param {boolean} props.isLoading - Whether the form is in a loading state
+ * @param {boolean} props.isNewPerson - Whether this is a new person form
  */
 const imageOptions = [
   { id: 1, src: Image01, alt: "Frame 1" },
@@ -27,7 +28,13 @@ const genderOptions = [
   { value: "other", label: "Other" },
 ];
 
-const PersonForm = ({ initialData, onSubmit, onCancel, isLoading = false }) => {
+const PersonForm = ({ 
+  initialData, 
+  onSubmit, 
+  onCancel, 
+  isLoading = false,
+  isNewPerson = false 
+}) => {
   const [formData, setFormData] = useState({
     name: "",
     nameZh: "",
@@ -113,7 +120,12 @@ const PersonForm = ({ initialData, onSubmit, onCancel, isLoading = false }) => {
     e.preventDefault();
 
     if (validateForm()) {
-      onSubmit(formData);
+      // If editing, include the ID
+      const submitData = isEditMode 
+        ? { ...formData, id: initialData.id }
+        : formData;
+        
+      onSubmit(submitData);
     }
   };
 
@@ -123,7 +135,7 @@ const PersonForm = ({ initialData, onSubmit, onCancel, isLoading = false }) => {
       className="space-y-4 p-4 bg-white rounded-lg shadow"
     >
       <h2 className="text-xl font-semibold mb-4">
-        {isEditMode ? "Edit Person" : "Add New Person"}
+        {isNewPerson ? "Add New Person" : `Edit ${initialData?.name || 'Person'}`}
       </h2>
 
       {/* English Name */}
@@ -295,10 +307,10 @@ const PersonForm = ({ initialData, onSubmit, onCancel, isLoading = false }) => {
                   d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                 ></path>
               </svg>
-              {isEditMode ? "Updating..." : "Creating..."}
+              {isNewPerson ? "Creating..." : "Updating..."}
             </span>
           ) : (
-            <span>{isEditMode ? "Update Person" : "Create Person"}</span>
+            <span>{isNewPerson ? "Create Person" : "Update Person"}</span>
           )}
         </button>
       </div>
@@ -318,6 +330,7 @@ PersonForm.propTypes = {
   onSubmit: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
   isLoading: PropTypes.bool,
+  isNewPerson: PropTypes.bool,
 };
 
 export default PersonForm;

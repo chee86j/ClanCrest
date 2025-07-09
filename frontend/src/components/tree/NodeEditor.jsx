@@ -13,8 +13,9 @@ const NodeEditor = ({
   onDeleteRelationship,
   relationships = [],
   isLoading = false,
+  isNewPerson = false,
 }) => {
-  const [activeTab, setActiveTab] = useState("details");
+  const [activeTab, setActiveTab] = useState(isNewPerson ? "details" : "details");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [selectedRelationship, setSelectedRelationship] = useState(null);
 
@@ -39,7 +40,7 @@ const NodeEditor = ({
         <div className="px-6 py-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-semibold text-gray-800">
-              Edit Family Member
+              {isNewPerson ? "Add New Person" : `Edit ${person?.name || 'Person'}`}
             </h2>
             <button
               onClick={onClose}
@@ -59,29 +60,31 @@ const NodeEditor = ({
             </button>
           </div>
 
-          {/* Tabs */}
-          <div className="flex space-x-4 mt-4">
-            <button
-              className={`px-4 py-2 text-sm font-medium rounded-md ${
-                activeTab === "details"
-                  ? "bg-blue-100 text-blue-700"
-                  : "text-gray-500 hover:text-gray-700"
-              }`}
-              onClick={() => setActiveTab("details")}
-            >
-              Details
-            </button>
-            <button
-              className={`px-4 py-2 text-sm font-medium rounded-md ${
-                activeTab === "relationships"
-                  ? "bg-blue-100 text-blue-700"
-                  : "text-gray-500 hover:text-gray-700"
-              }`}
-              onClick={() => setActiveTab("relationships")}
-            >
-              Relationships
-            </button>
-          </div>
+          {/* Tabs - Only show for existing persons */}
+          {!isNewPerson && (
+            <div className="flex space-x-4 mt-4">
+              <button
+                className={`px-4 py-2 text-sm font-medium rounded-md ${
+                  activeTab === "details"
+                    ? "bg-blue-100 text-blue-700"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+                onClick={() => setActiveTab("details")}
+              >
+                Details
+              </button>
+              <button
+                className={`px-4 py-2 text-sm font-medium rounded-md ${
+                  activeTab === "relationships"
+                    ? "bg-blue-100 text-blue-700"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+                onClick={() => setActiveTab("relationships")}
+              >
+                Relationships
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Content */}
@@ -89,23 +92,26 @@ const NodeEditor = ({
           className="p-6 overflow-y-auto"
           style={{ maxHeight: "calc(90vh - 200px)" }}
         >
-          {activeTab === "details" ? (
+          {activeTab === "details" || isNewPerson ? (
             <div className="space-y-4">
               <PersonForm
-                initialData={person}
+                initialData={person || {}}
                 onSubmit={onUpdatePerson}
                 onCancel={onClose}
                 isLoading={isLoading}
+                isNewPerson={isNewPerson}
               />
 
-              <div className="border-t pt-4 mt-4">
-                <button
-                  onClick={() => setShowDeleteConfirm(true)}
-                  className="px-4 py-2 text-sm font-medium text-red-600 hover:text-red-700 focus:outline-none"
-                >
-                  Delete Person
-                </button>
-              </div>
+              {!isNewPerson && (
+                <div className="border-t pt-4 mt-4">
+                  <button
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="px-4 py-2 text-sm font-medium text-red-600 hover:text-red-700 focus:outline-none"
+                  >
+                    Delete Person
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <div className="space-y-4">
@@ -126,8 +132,8 @@ const NodeEditor = ({
                         <div>
                           <span className="font-medium">
                             {rel.fromId === person.id
-                              ? rel.to.name
-                              : rel.from.name}
+                              ? rel.to?.name || "Unknown Person"
+                              : rel.from?.name || "Unknown Person"}
                           </span>
                           <span className="text-gray-500 mx-2">•</span>
                           <span className="text-gray-600">{rel.type}</span>
@@ -234,13 +240,13 @@ const NodeEditor = ({
 
 NodeEditor.propTypes = {
   person: PropTypes.shape({
-    id: PropTypes.number.isRequired,
-    name: PropTypes.string.isRequired,
+    id: PropTypes.number,
+    name: PropTypes.string,
     nameZh: PropTypes.string,
     gender: PropTypes.string,
     notes: PropTypes.string,
     imageId: PropTypes.number,
-  }).isRequired,
+  }),
   onClose: PropTypes.func.isRequired,
   onUpdatePerson: PropTypes.func.isRequired,
   onDeletePerson: PropTypes.func.isRequired,
@@ -253,19 +259,12 @@ NodeEditor.propTypes = {
       fromId: PropTypes.number.isRequired,
       toId: PropTypes.number.isRequired,
       type: PropTypes.string.isRequired,
-      dnaConfirmed: PropTypes.bool,
-      notes: PropTypes.string,
-      from: PropTypes.shape({
-        id: PropTypes.number.isRequired,
-        name: PropTypes.string.isRequired,
-      }).isRequired,
-      to: PropTypes.shape({
-        id: PropTypes.number.isRequired,
-        name: PropTypes.string.isRequired,
-      }).isRequired,
+      from: PropTypes.object,
+      to: PropTypes.object,
     })
   ),
   isLoading: PropTypes.bool,
+  isNewPerson: PropTypes.bool,
 };
 
 export default NodeEditor;

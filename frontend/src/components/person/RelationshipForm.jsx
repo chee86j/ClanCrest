@@ -53,7 +53,20 @@ const RelationshipForm = ({
   const handleSubmit = (e) => {
     e.preventDefault();
     if (isValid) {
-      onSubmit(formData);
+      // Convert IDs to integers before submission
+      const submissionData = {
+        ...formData,
+        fromId: formData.fromId ? parseInt(formData.fromId) : null,
+        toId: formData.toId ? parseInt(formData.toId) : null,
+      };
+      console.log("Submitting relationship data:", submissionData);
+      
+      // If this is a spouse relationship, create the bidirectional relationship
+      if (formData.type === 'spouse') {
+        onSubmit(submissionData);
+      } else {
+        onSubmit(submissionData);
+      }
     }
   };
 
@@ -62,34 +75,44 @@ const RelationshipForm = ({
     .filter(person => person.id !== excludePersonId)
     .sort((a, b) => a.name.localeCompare(b.name));
 
+  // Get the current person's name
+  const currentPerson = excludePersonId ? persons.find(p => p.id === excludePersonId) : null;
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4 p-4 bg-white rounded-lg shadow">
       <h2 className="text-xl font-semibold mb-4">
-        {initialData ? 'Edit Relationship' : 'Create New Relationship'}
+        {initialData?.id ? 'Edit Relationship' : 'Create New Relationship'}
       </h2>
 
-      {/* First Person Selection */}
+      {/* First Person Selection - Show as readonly if excludePersonId is provided */}
       <div className="space-y-1">
         <label htmlFor="fromId" className="block text-sm font-medium text-gray-700">
           First Person <span className="text-red-500">*</span>
         </label>
-        <select
-          id="fromId"
-          name="fromId"
-          value={formData.fromId}
-          onChange={handleChange}
-          disabled={isLoading}
-          className={`w-full px-3 py-2 border rounded-md ${
-            errors.fromId ? 'border-red-500' : 'border-gray-300'
-          } focus:outline-none focus:ring-2 focus:ring-blue-500`}
-        >
-          <option value="">Select a person</option>
-          {availablePersons.map(person => (
-            <option key={person.id} value={person.id}>
-              {person.name} {person.nameZh ? `(${person.nameZh})` : ''}
-            </option>
-          ))}
-        </select>
+        {excludePersonId ? (
+          <div className="w-full px-3 py-2 border rounded-md border-gray-300 bg-gray-50 text-gray-700">
+            {currentPerson?.name} {currentPerson?.nameZh ? `(${currentPerson.nameZh})` : ''}
+            <input type="hidden" name="fromId" value={excludePersonId} />
+          </div>
+        ) : (
+          <select
+            id="fromId"
+            name="fromId"
+            value={formData.fromId}
+            onChange={handleChange}
+            disabled={isLoading}
+            className={`w-full px-3 py-2 border rounded-md ${
+              errors.fromId ? 'border-red-500' : 'border-gray-300'
+            } focus:outline-none focus:ring-2 focus:ring-blue-500`}
+          >
+            <option value="">Select a person</option>
+            {availablePersons.map(person => (
+              <option key={person.id} value={person.id}>
+                {person.name} {person.nameZh ? `(${person.nameZh})` : ''}
+              </option>
+            ))}
+          </select>
+        )}
         {errors.fromId && (
           <p className="text-red-500 text-xs mt-1">{errors.fromId}</p>
         )}
@@ -121,6 +144,11 @@ const RelationshipForm = ({
         )}
         {suggestions.type && (
           <p className="text-blue-600 text-xs mt-1">{suggestions.type}</p>
+        )}
+        {formData.type === 'spouse' && (
+          <p className="text-green-600 text-xs mt-1">
+            Both people will be automatically set as spouses to each other
+          </p>
         )}
       </div>
 
@@ -198,7 +226,7 @@ const RelationshipForm = ({
               : 'bg-blue-600 hover:bg-blue-700'
           }`}
         >
-          {isLoading ? 'Saving...' : initialData ? 'Update' : 'Create'}
+          {isLoading ? 'Saving...' : initialData?.id ? 'Update' : 'Create'}
         </button>
       </div>
     </form>
