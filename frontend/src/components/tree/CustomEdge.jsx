@@ -1,10 +1,9 @@
 import React from 'react';
-import { getBezierPath, BaseEdge } from 'reactflow';
 import PropTypes from 'prop-types';
 
 /**
  * Custom edge component for family relationships
- * Provides different styles based on relationship type
+ * Creates traditional family tree connections
  */
 const CustomEdge = ({
   id,
@@ -20,8 +19,8 @@ const CustomEdge = ({
 }) => {
   // Default style
   const edgeStyle = {
-    strokeWidth: 2,
-    stroke: '#9e9e9e',
+    strokeWidth: 1.5,
+    stroke: '#757575',
     ...style,
   };
 
@@ -32,48 +31,76 @@ const CustomEdge = ({
   let edgePath;
   
   if (relationType === 'spouse') {
-    // For spouse relationships, use a straight line
+    // For spouse relationships, use a straight horizontal line
     edgePath = `M ${sourceX} ${sourceY} L ${targetX} ${targetY}`;
   } else if (relationType === 'parent' || relationType === 'child') {
-    // For parent-child relationships, create a path that goes down and then horizontally
-    // This creates the T-shaped connection seen in the example
-    const midY = (sourceY + targetY) / 2;
+    // For parent-child relationships, create a T-shaped connection
     
-    // Check if this is a vertical connection (parent above child)
-    if (Math.abs(sourceY - targetY) > Math.abs(sourceX - targetX)) {
-      const centerX = (sourceX + targetX) / 2;
-      edgePath = `M ${sourceX} ${sourceY} 
-                  L ${sourceX} ${midY} 
-                  L ${targetX} ${midY} 
-                  L ${targetX} ${targetY}`;
+    // Determine if this is a vertical parent-child connection
+    const isVertical = Math.abs(sourceY - targetY) > Math.abs(sourceX - targetX);
+    
+    if (isVertical) {
+      // For vertical parent-child connections (traditional family tree)
+      const midY = (sourceY + targetY) / 2;
+      
+      // If parent is above child (normal case)
+      if (sourceY < targetY) {
+        edgePath = `M ${sourceX} ${sourceY} 
+                    L ${sourceX} ${midY} 
+                    L ${targetX} ${midY} 
+                    L ${targetX} ${targetY}`;
+      } else {
+        // If child is above parent (unusual but possible)
+        edgePath = `M ${sourceX} ${sourceY} 
+                    L ${sourceX} ${midY} 
+                    L ${targetX} ${midY} 
+                    L ${targetX} ${targetY}`;
+      }
     } else {
-      // For horizontal connections, use a simple bezier curve
-      const [path] = getBezierPath({
-        sourceX,
-        sourceY,
-        sourcePosition,
-        targetX,
-        targetY,
-        targetPosition,
-      });
-      edgePath = path;
+      // For horizontal parent-child connections (less common)
+      const midX = (sourceX + targetX) / 2;
+      
+      edgePath = `M ${sourceX} ${sourceY} 
+                  L ${midX} ${sourceY} 
+                  L ${midX} ${targetY} 
+                  L ${targetX} ${targetY}`;
     }
+  } else if (relationType === 'sibling') {
+    // For sibling relationships, use a curved line
+    const controlPointX = (sourceX + targetX) / 2;
+    const controlPointY = sourceY - 50; // Control point above the siblings
+    
+    edgePath = `M ${sourceX} ${sourceY} 
+                Q ${controlPointX} ${controlPointY} ${targetX} ${targetY}`;
   } else {
-    // For other relationships, use a bezier path
-    const [path] = getBezierPath({
-      sourceX,
-      sourceY,
-      sourcePosition,
-      targetX,
-      targetY,
-      targetPosition,
-    });
-    edgePath = path;
+    // For other relationships, use a straight line
+    edgePath = `M ${sourceX} ${sourceY} L ${targetX} ${targetY}`;
   }
 
-  // Don't render any labels to match the example
   return (
-    <BaseEdge path={edgePath} markerEnd={markerEnd} style={edgeStyle} />
+    <g>
+      <path
+        d={edgePath}
+        style={edgeStyle}
+        fill="none"
+        markerEnd={markerEnd}
+      />
+      
+      {/* Add arrow marker for parent-child relationships */}
+      {(relationType === 'parent' || relationType === 'child') && (
+        <marker
+          id={`arrow-${id}`}
+          viewBox="0 0 10 10"
+          refX="5"
+          refY="5"
+          markerWidth="6"
+          markerHeight="6"
+          orient="auto-start-reverse"
+        >
+          <path d="M 0 0 L 10 5 L 0 10 z" fill={edgeStyle.stroke} />
+        </marker>
+      )}
+    </g>
   );
 };
 

@@ -23,6 +23,49 @@ const edgeOptions = {
   },
 };
 
+// Legend component to explain family tree symbols
+const TreeLegend = ({ genderStyles }) => (
+  <div className="bg-white p-3 rounded-lg shadow-md">
+    <h3 className="text-sm font-semibold mb-2">Legend</h3>
+    <div className="space-y-2">
+      {/* Gender styles */}
+      <div className="flex items-center gap-2">
+        <div className="w-4 h-4 rounded-full" style={{ backgroundColor: genderStyles.male.backgroundColor }}></div>
+        <span className="text-xs">Male</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <div className="w-4 h-4 rounded-full" style={{ backgroundColor: genderStyles.female.backgroundColor }}></div>
+        <span className="text-xs">Female</span>
+      </div>
+      <div className="flex items-center gap-2 mb-2">
+        <div className="w-4 h-4 rounded-full" style={{ backgroundColor: genderStyles.other.backgroundColor }}></div>
+        <span className="text-xs">Other</span>
+      </div>
+      
+      {/* Relationship lines */}
+      <div className="flex items-center gap-2">
+        <div className="w-8 h-px" style={{ backgroundColor: '#757575', height: '2px' }}></div>
+        <span className="text-xs">Spouse</span>
+      </div>
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center gap-2">
+          <svg width="32" height="20" viewBox="0 0 32 20">
+            <path d="M 0 0 L 0 10 L 32 10 L 32 20" stroke="#757575" fill="none" strokeWidth="2" />
+            <path d="M 29 17 L 32 20 L 35 17" stroke="#757575" fill="none" strokeWidth="2" transform="translate(-3, 0)" />
+          </svg>
+          <span className="text-xs">Parent → Child</span>
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <svg width="32" height="10" viewBox="0 0 32 10">
+          <path d="M 0 5 Q 16 0 32 5" stroke="#9c27b0" strokeDasharray="3,3" fill="none" strokeWidth="2" />
+        </svg>
+        <span className="text-xs">Siblings</span>
+      </div>
+    </div>
+  </div>
+);
+
 /**
  * FamilyTreeCanvas component for rendering the ReactFlow canvas
  * 
@@ -99,9 +142,14 @@ const FamilyTreeCanvas = ({
         }}
         attributionPosition="bottom-left"
         edgeTypes={edgeTypes}
+        nodesDraggable={true}
+        elementsSelectable={true}
+        zoomOnScroll={true}
+        panOnScroll={false}
+        panOnDrag={true}
       >
         <Controls 
-          showInteractive={true} 
+          showInteractive={false} 
           className="shadow-lg rounded-lg overflow-hidden"
           style={{ 
             backgroundColor: 'white',
@@ -123,8 +171,8 @@ const FamilyTreeCanvas = ({
           }}
           maskColor="rgba(240, 240, 240, 0.4)"
         />
-        {/* Remove background dots */}
 
+        {/* Top controls */}
         <Panel position="top-right" className="space-y-2 p-2">
           <div className="flex flex-col gap-2">
             <button 
@@ -156,33 +204,7 @@ const FamilyTreeCanvas = ({
 
         {/* Legend */}
         <Panel position="bottom-right" className="hidden md:block p-2">
-          <div className="bg-white p-3 rounded-lg shadow-md">
-            <h3 className="text-sm font-semibold mb-2">Legend</h3>
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded-full" style={{ backgroundColor: genderStyles.male.backgroundColor }}></div>
-                <span className="text-xs">Male</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded-full" style={{ backgroundColor: genderStyles.female.backgroundColor }}></div>
-                <span className="text-xs">Female</span>
-              </div>
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-4 h-4 rounded-full" style={{ backgroundColor: genderStyles.other.backgroundColor }}></div>
-                <span className="text-xs">Other</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-0.5" style={{ backgroundColor: '#757575', height: '2px' }}></div>
-                <span className="text-xs">Spouse</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-0.5 flex items-center justify-end" style={{ backgroundColor: '#9e9e9e' }}>
-                  <div className="w-2 h-2 transform rotate-45" style={{ backgroundColor: '#9e9e9e' }}></div>
-                </div>
-                <span className="text-xs">Parent/Child</span>
-              </div>
-            </div>
-          </div>
+          <TreeLegend genderStyles={genderStyles} />
         </Panel>
 
         {/* Mobile controls */}

@@ -1,6 +1,6 @@
 import { useAuth } from "../context/AuthContext";
 import { Navigate, Link } from "react-router-dom";
-import FamilyTree from "../components/tree/FamilyTree";
+import FamilyTreeWithChart from "../components/tree/FamilyTreeWithChart";
 import Image01 from "../assets/images/01.png";
 import Image02 from "../assets/images/02.png";
 import Image03 from "../assets/images/03.png";
@@ -70,7 +70,7 @@ const Dashboard = () => {
           <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
             Your Family Tree
           </h2>
-          <FamilyTree />
+          <FamilyTreeWithChart />
         </div>
 
         <div className="mt-16 grid grid-cols-1 gap-8 md:grid-cols-3">

@@ -45,7 +45,7 @@ const getEdgeStyle = (type) => {
     case 'child':
       return {
         ...baseStyle,
-        stroke: '#9e9e9e',
+        stroke: '#757575',
         strokeWidth: 1.5,
       };
     case 'spouse':
@@ -58,12 +58,12 @@ const getEdgeStyle = (type) => {
       return {
         ...baseStyle,
         stroke: '#9c27b0',
-        strokeDasharray: '5,5',
+        strokeDasharray: '3,3',
       };
     default:
       return {
         ...baseStyle,
-        stroke: '#9e9e9e',
+        stroke: '#757575',
       };
   }
 };
@@ -75,138 +75,239 @@ const getEdgeStyle = (type) => {
  * @returns {Object} Map of node positions
  */
 const calculateNodePositions = (persons, relationships) => {
-  const positions = {};
-  const spouses = new Map(); // Track spouse relationships
-  const parentChildLinks = new Map(); // Track parent-child relationships
-  const siblingLinks = new Map(); // Track sibling relationships
-
+  // Create a graph representation of the family tree
+  const familyGraph = {
+    nodes: {},    // Person data by ID
+    spouses: {},  // Spouse relationships by person ID
+    children: {}, // Children by parent ID
+    parents: {},  // Parents by child ID
+    siblings: {}, // Siblings by person ID
+    generations: {} // Persons by generation level
+  };
+  
   // Ensure relationships is an array
   const relationshipsArray = Array.isArray(relationships) ? relationships : [];
-
-  // Find spouse relationships
-  relationshipsArray
-    .filter((r) => r.type === "spouse")
-    .forEach((r) => {
-      const fromId = r.fromId.toString();
-      const toId = r.toId.toString();
-      
-      // Track both directions of the spouse relationship
-      if (!spouses.has(fromId)) spouses.set(fromId, []);
-      if (!spouses.has(toId)) spouses.set(toId, []);
-      
-      spouses.get(fromId).push(toId);
-      spouses.get(toId).push(fromId);
-    });
-
-  // Track parent-child relationships
-  relationshipsArray
-    .filter((r) => r.type === "parent" || r.type === "child")
-    .forEach((r) => {
-      const parentId = r.type === "parent" ? r.fromId.toString() : r.toId.toString();
-      const childId = r.type === "parent" ? r.toId.toString() : r.fromId.toString();
-      
-      if (!parentChildLinks.has(parentId)) parentChildLinks.set(parentId, []);
-      parentChildLinks.get(parentId).push(childId);
-    });
-
-  // Track sibling relationships
-  relationshipsArray
-    .filter((r) => r.type === "sibling")
-    .forEach((r) => {
-      const fromId = r.fromId.toString();
-      const toId = r.toId.toString();
-      
-      if (!siblingLinks.has(fromId)) siblingLinks.set(fromId, []);
-      if (!siblingLinks.has(toId)) siblingLinks.set(toId, []);
-      
-      siblingLinks.get(fromId).push(toId);
-      siblingLinks.get(toId).push(fromId);
-    });
-
-  // For the example layout (T-shaped with parents at top, children below)
-  const HORIZONTAL_SPACING = 200;
-  const VERTICAL_SPACING = 200;
   
-  // Find all parent-child groups
-  const familyGroups = [];
-  
-  // First, place all spouse pairs
+  // Add all persons to the graph
   persons.forEach(person => {
-    const personId = person.id.toString();
-    const personSpouses = spouses.get(personId) || [];
+    const id = person.id.toString();
+    familyGraph.nodes[id] = person;
+    familyGraph.spouses[id] = [];
+    familyGraph.children[id] = [];
+    familyGraph.parents[id] = [];
+    familyGraph.siblings[id] = [];
+  });
+  
+  // Process relationships to build the family graph
+  relationshipsArray.forEach(rel => {
+    const fromId = rel.fromId.toString();
+    const toId = rel.toId.toString();
     
-    if (personSpouses.length > 0 && !positions[personId]) {
-      // This person has a spouse and hasn't been positioned yet
-      const spouseId = personSpouses[0];
-      
-      // Position the couple horizontally
-      positions[personId] = { x: 0, y: 0 }; // Will adjust x later
-      positions[spouseId] = { x: HORIZONTAL_SPACING, y: 0 };
-      
-      // Check if they have children
-      const children = [
-        ...(parentChildLinks.get(personId) || []),
-        ...(parentChildLinks.get(spouseId) || [])
-      ];
-      
-      if (children.length > 0) {
-        familyGroups.push({
-          parents: [personId, spouseId],
-          children: children
-        });
-      }
+    switch (rel.type) {
+      case 'spouse':
+        // Add bidirectional spouse relationships
+        if (!familyGraph.spouses[fromId].includes(toId)) {
+          familyGraph.spouses[fromId].push(toId);
+        }
+        if (!familyGraph.spouses[toId].includes(fromId)) {
+          familyGraph.spouses[toId].push(fromId);
+        }
+        break;
+        
+      case 'parent':
+        // Add parent-child relationships
+        if (!familyGraph.children[fromId].includes(toId)) {
+          familyGraph.children[fromId].push(toId);
+        }
+        if (!familyGraph.parents[toId].includes(fromId)) {
+          familyGraph.parents[toId].push(fromId);
+        }
+        break;
+        
+      case 'child':
+        // Add child-parent relationships (inverse of parent)
+        if (!familyGraph.parents[fromId].includes(toId)) {
+          familyGraph.parents[fromId].push(toId);
+        }
+        if (!familyGraph.children[toId].includes(fromId)) {
+          familyGraph.children[toId].push(fromId);
+        }
+        break;
+        
+      case 'sibling':
+        // Add bidirectional sibling relationships
+        if (!familyGraph.siblings[fromId].includes(toId)) {
+          familyGraph.siblings[fromId].push(toId);
+        }
+        if (!familyGraph.siblings[toId].includes(fromId)) {
+          familyGraph.siblings[toId].push(fromId);
+        }
+        break;
     }
   });
   
-  // If we have a family group, position it like the example
-  if (familyGroups.length > 0) {
-    const group = familyGroups[0]; // Take the first family group
+  // Assign generations using BFS
+  const assignGenerations = () => {
+    // Find root nodes (persons without parents)
+    const rootIds = Object.keys(familyGraph.nodes).filter(id => 
+      familyGraph.parents[id].length === 0
+    );
     
-    // Position parents horizontally
-    const parent1 = group.parents[0];
-    const parent2 = group.parents.length > 1 ? group.parents[1] : null;
-    
-    positions[parent1] = { x: 0, y: 0 };
-    if (parent2) {
-      positions[parent2] = { x: HORIZONTAL_SPACING, y: 0 };
+    if (rootIds.length === 0 && persons.length > 0) {
+      // If no root nodes found, use the first person as root
+      rootIds.push(persons[0].id.toString());
     }
     
-    // Position children below parents
-    const childrenCount = group.children.length;
-    if (childrenCount > 0) {
-      // Calculate center position between parents
-      const centerX = parent2 ? HORIZONTAL_SPACING / 2 : 0;
+    // BFS to assign generations
+    const queue = rootIds.map(id => ({ id, generation: 0 }));
+    const visited = new Set();
+    
+    while (queue.length > 0) {
+      const { id, generation } = queue.shift();
       
-      // Position children in a row below parents
-      const childStartX = centerX - ((childrenCount - 1) * HORIZONTAL_SPACING) / 2;
+      if (visited.has(id)) continue;
+      visited.add(id);
       
-      group.children.forEach((childId, index) => {
-        positions[childId] = {
-          x: childStartX + index * HORIZONTAL_SPACING,
-          y: VERTICAL_SPACING
-        };
+      // Add to generation map
+      if (!familyGraph.generations[generation]) {
+        familyGraph.generations[generation] = [];
+      }
+      familyGraph.generations[generation].push(id);
+      
+      // Add children to queue with next generation
+      familyGraph.children[id].forEach(childId => {
+        if (!visited.has(childId)) {
+          queue.push({ id: childId, generation: generation + 1 });
+        }
+      });
+      
+      // Add siblings to same generation
+      familyGraph.siblings[id].forEach(siblingId => {
+        if (!visited.has(siblingId)) {
+          queue.push({ id: siblingId, generation });
+        }
+      });
+      
+      // Add spouses to same generation
+      familyGraph.spouses[id].forEach(spouseId => {
+        if (!visited.has(spouseId)) {
+          queue.push({ id: spouseId, generation });
+        }
       });
     }
-  }
-  
-  // For any remaining persons without positions, place them in a grid
-  let gridX = 0;
-  let gridY = VERTICAL_SPACING * 2;
-  
-  persons.forEach(person => {
-    const personId = person.id.toString();
-    if (!positions[personId]) {
-      positions[personId] = { x: gridX, y: gridY };
-      gridX += HORIZONTAL_SPACING;
-      
-      // Wrap to next row after 3 columns
-      if (gridX > HORIZONTAL_SPACING * 2) {
-        gridX = 0;
-        gridY += VERTICAL_SPACING;
+    
+    // Handle any unvisited nodes (disconnected components)
+    Object.keys(familyGraph.nodes).forEach(id => {
+      if (!visited.has(id)) {
+        const generation = Object.keys(familyGraph.generations).length;
+        if (!familyGraph.generations[generation]) {
+          familyGraph.generations[generation] = [];
+        }
+        familyGraph.generations[generation].push(id);
       }
+    });
+  };
+  
+  assignGenerations();
+  
+  // Layout constants
+  const HORIZONTAL_SPACING = 200;
+  const VERTICAL_SPACING = 200;
+  const SPOUSE_SPACING = 150;
+  
+  // Calculate positions
+  const positions = {};
+  
+  // Process each generation
+  Object.entries(familyGraph.generations).forEach(([genLevel, personIds]) => {
+    const generation = parseInt(genLevel);
+    const y = generation * VERTICAL_SPACING;
+    
+    // Group persons by family units (spouse groups)
+    const families = [];
+    const processed = new Set();
+    
+    // Find family units in this generation
+    personIds.forEach(personId => {
+      if (processed.has(personId)) return;
+      
+      const spouses = familyGraph.spouses[personId];
+      const spousesInSameGen = spouses.filter(id => 
+        familyGraph.generations[generation]?.includes(id) && !processed.has(id)
+      );
+      
+      // Create a family unit with this person and their spouses
+      const familyUnit = [personId, ...spousesInSameGen];
+      families.push(familyUnit);
+      
+      // Mark all as processed
+      familyUnit.forEach(id => processed.add(id));
+    });
+    
+    // Position each family unit
+    let currentX = 0;
+    families.forEach(family => {
+      // Calculate width needed for this family
+      const familyWidth = (family.length - 1) * SPOUSE_SPACING;
+      
+      // Position each person in the family
+      family.forEach((personId, index) => {
+        positions[personId] = {
+          x: currentX + (index * SPOUSE_SPACING),
+          y
+        };
+      });
+      
+      // Position children of this family
+      const allChildren = new Set();
+      family.forEach(parentId => {
+        familyGraph.children[parentId].forEach(childId => allChildren.add(childId));
+      });
+      
+      if (allChildren.size > 0) {
+        // Calculate center position of parents
+        const familyCenter = currentX + (familyWidth / 2);
+        
+        // Calculate children positions in the next generation
+        const childrenArray = Array.from(allChildren);
+        const childrenWidth = (childrenArray.length - 1) * HORIZONTAL_SPACING;
+        const childStartX = familyCenter - (childrenWidth / 2);
+        
+        // Position each child
+        childrenArray.forEach((childId, index) => {
+          // Only set position if not already set
+          if (!positions[childId]) {
+            positions[childId] = {
+              x: childStartX + (index * HORIZONTAL_SPACING),
+              y: y + VERTICAL_SPACING
+            };
+          }
+        });
+      }
+      
+      // Update current X for next family
+      currentX += Math.max(familyWidth + HORIZONTAL_SPACING, HORIZONTAL_SPACING);
+    });
+  });
+  
+  // Ensure all persons have positions
+  persons.forEach(person => {
+    const id = person.id.toString();
+    if (!positions[id]) {
+      // Place unpositioned persons in a grid at the bottom
+      const lastGeneration = Object.keys(familyGraph.generations).length;
+      const y = (lastGeneration + 1) * VERTICAL_SPACING;
+      
+      // Find an empty spot
+      let x = 0;
+      while (Object.values(positions).some(pos => pos.x === x && pos.y === y)) {
+        x += HORIZONTAL_SPACING;
+      }
+      
+      positions[id] = { x, y };
     }
   });
-
+  
   return positions;
 };
 
@@ -223,12 +324,11 @@ const createPersonNode = (person, position) => ({
     label: (
       <div className="flex flex-col items-center">
         <div
-          className="rounded-full flex items-center justify-center mb-2 transition-all"
+          className="rounded-full flex items-center justify-center mb-2"
           style={{
             ...genderStyles[person.gender || "other"],
             width: "60px",
             height: "60px",
-            transition: "all 0.3s ease",
           }}
         >
           {person.imageUrl ? (
@@ -249,10 +349,7 @@ const createPersonNode = (person, position) => ({
           {person.nameZh && (
             <div className="text-xs text-gray-600">{person.nameZh}</div>
           )}
-          {person.id === 5 && ( // For "YOU" label in the example
-            <div className="text-xs text-gray-500 uppercase font-semibold mt-1">You</div>
-          )}
-          {person.relationship && ( // For relationship labels like "SISTER"
+          {person.relationship && (
             <div className="text-xs text-gray-500 uppercase font-semibold mt-1">{person.relationship}</div>
           )}
         </div>
@@ -264,8 +361,9 @@ const createPersonNode = (person, position) => ({
   style: {
     background: "transparent",
     border: "none",
+    boxShadow: "none",
     width: 100,
-    height: 100,
+    padding: 0,
   },
   draggable: true, // Enable dragging for all nodes
 });
@@ -278,11 +376,30 @@ const createPersonNode = (person, position) => ({
 const createEdges = (relationships) => {
   if (!Array.isArray(relationships)) return [];
 
+  // Track processed spouse relationships to avoid duplicates
+  const processedSpouses = new Set();
+  
   return relationships.map((rel) => {
-    const id = `${rel.fromId}-${rel.type}-${rel.toId}`;
-    const source = rel.fromId.toString();
-    const target = rel.toId.toString();
-    const type = "customEdge"; // Use our custom edge component
+    const fromId = rel.fromId.toString();
+    const toId = rel.toId.toString();
+    
+    // For spouse relationships, create a unique ID to prevent duplicates
+    // (since spouses are bidirectional)
+    let id;
+    if (rel.type === 'spouse') {
+      // Sort IDs to ensure consistent edge ID regardless of direction
+      const [smallerId, largerId] = [fromId, toId].sort();
+      id = `spouse-${smallerId}-${largerId}`;
+      
+      // Skip if we've already processed this spouse pair
+      const spousePairKey = `${smallerId}-${largerId}`;
+      if (processedSpouses.has(spousePairKey)) {
+        return null;
+      }
+      processedSpouses.add(spousePairKey);
+    } else {
+      id = `${rel.type}-${fromId}-${toId}`;
+    }
     
     // Set edge style based on relationship type
     const style = getEdgeStyle(rel.type);
@@ -292,21 +409,24 @@ const createEdges = (relationships) => {
       markerEnd: "",
     };
     
-    if (rel.type === "parent" || rel.type === "child") {
-      // For parent/child relationships, add an arrow marker
-      edgeConfig.markerEnd = "arrow";
+    if (rel.type === "parent") {
+      // For parent relationships, add a marker at the end
+      edgeConfig.markerEnd = `url(#arrow-${id})`;
+    } else if (rel.type === "child") {
+      // For child relationships, add a marker at the start
+      edgeConfig.markerStart = `url(#arrow-${id})`;
     }
     
     return {
       id,
-      source,
-      target,
-      type,
+      source: fromId,
+      target: toId,
+      type: "customEdge",
       style,
       data: { type: rel.type },
       ...edgeConfig,
     };
-  });
+  }).filter(edge => edge !== null); // Remove null edges (duplicates)
 };
 
 // Debounce function to limit API calls during dragging
