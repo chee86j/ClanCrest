@@ -7,7 +7,7 @@ import { toFamilyChartFormat, fromFamilyChartFormat, findRootPerson } from '../.
  * FamilyChartWrapper component
  * Wraps the family-chart library to integrate with our application
  */
-const FamilyChartWrapper = ({
+const FamilyChartWrapper = React.forwardRef(({
   persons,
   relationships,
   onPersonClick,
@@ -18,8 +18,9 @@ const FamilyChartWrapper = ({
   onLayoutChange,
   layoutData,
   className,
-  style
-}) => {
+  style,
+  onContextMenu
+}, ref) => {
   const containerRef = useRef(null);
   const chartRef = useRef(null);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -45,15 +46,27 @@ const FamilyChartWrapper = ({
     const chart = new FamilyChart(containerRef.current, {
       data: familyChartData.data,
       startId: startId,
-      // Configure family-chart options
+      // Configure family-chart options for traditional family tree layout
       nameFontSize: 14,
-      levelGap: 60,
+      // Increase vertical spacing for better generation separation
+      levelGap: 100,
+      // Adjust node padding and size
       nodePaddingX: 15,
       nodePaddingY: 10,
       nodeWidth: 120,
       nodeHeight: 100,
+      // Traditional top-to-bottom layout
+      orientation: 'top',
+      // Increase sibling separation for better readability
+      siblingSeparation: 50,
+      // Ensure spouses are placed side by side
+      spouseSeparation: 30,
       // Apply stored layout data if available
       layout: layoutData || {},
+      // Enable compact layout for better use of space
+      compact: true,
+      // Configure tree alignment
+      align: 'center',
       // Custom node template
       nodeTemplate: (data) => {
         const gender = data.gender || 'other';
@@ -87,6 +100,22 @@ const FamilyChartWrapper = ({
             ${data.nameZh ? `<div class="fc-node-name-zh" style="font-size: 12px; color: #666;">${data.nameZh}</div>` : ''}
           </div>
         `;
+      },
+      // Configure relationship lines
+      linkTemplate: (data) => {
+        // Default style for relationship lines
+        let style = 'stroke: #757575; stroke-width: 1.5px;';
+        
+        // Different styles for different relationship types
+        if (data.relationshipType === 'spouse') {
+          style = 'stroke: #757575; stroke-width: 1.5px;';
+        } else if (data.relationshipType === 'parent-child') {
+          style = 'stroke: #757575; stroke-width: 1.5px;';
+        } else if (data.relationshipType === 'sibling') {
+          style = 'stroke: #9c27b0; stroke-width: 1.5px; stroke-dasharray: 3,3;';
+        }
+        
+        return `<path d="${data.d}" style="${style}" />`;
       }
     });
 
@@ -160,6 +189,7 @@ const FamilyChartWrapper = ({
         overflow: 'hidden',
         ...style 
       }}
+      onContextMenu={onContextMenu}
     >
       {!isInitialized && (
         <div style={{ 
@@ -220,7 +250,7 @@ const FamilyChartWrapper = ({
       </div>
     </div>
   );
-};
+});
 
 FamilyChartWrapper.propTypes = {
   persons: PropTypes.array.isRequired,
@@ -231,9 +261,10 @@ FamilyChartWrapper.propTypes = {
   onRelationshipUpdate: PropTypes.func,
   onRelationshipDelete: PropTypes.func,
   onLayoutChange: PropTypes.func,
+  onContextMenu: PropTypes.func,
   layoutData: PropTypes.object,
   className: PropTypes.string,
   style: PropTypes.object
 };
 
-export default React.forwardRef((props, ref) => <FamilyChartWrapper {...props} ref={ref} />); 
+export default FamilyChartWrapper; 

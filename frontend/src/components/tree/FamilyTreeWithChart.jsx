@@ -66,17 +66,17 @@ const FamilyTreeWithChart = () => {
     setIsNewPersonForm(false);
   }, []);
 
-  // Handle context menu for person
-  const handlePersonContextMenu = useCallback((e, person) => {
-    e.preventDefault();
-    setSelectedPerson(person);
-    openContextMenu(e.pageX, e.pageY, { type: "node", data: person });
-  }, [openContextMenu]);
-
   // Handle context menu for canvas
   const handleCanvasContextMenu = useCallback((e) => {
     e.preventDefault();
     openContextMenu(e.pageX, e.pageY, { type: "canvas" });
+  }, [openContextMenu]);
+
+  // Handle node context menu
+  const handleNodeContextMenu = useCallback((e, person) => {
+    e.preventDefault();
+    e.stopPropagation();
+    openContextMenu(e.pageX, e.pageY, { type: "node", data: person });
   }, [openContextMenu]);
 
   // Handle layout change
@@ -233,6 +233,26 @@ const FamilyTreeWithChart = () => {
     }
   };
 
+  // Loading state
+  if (personsLoading || relationshipsLoading) {
+    return (
+      <div className="w-full h-[600px] flex items-center justify-center">
+        <div className="text-lg text-gray-600">Loading family tree...</div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (personsError || relationshipsError) {
+    return (
+      <div className="w-full h-[600px] flex items-center justify-center">
+        <div className="text-lg text-red-600">
+          Error loading family tree data. Please try again later.
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full h-[600px] relative">
       <FamilyChartWrapper
@@ -277,7 +297,7 @@ const FamilyTreeWithChart = () => {
         />
       )}
 
-      <div className="max-w-md mx-auto">
+      <div className="max-w-md mx-auto mt-4">
         <KinshipFinder persons={persons} />
       </div>
     </div>

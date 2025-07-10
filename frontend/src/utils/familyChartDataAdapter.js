@@ -31,6 +31,48 @@ export const toFamilyChartFormat = (persons, relationships) => {
     });
   });
 
+  // Create a map of spouse pairs to their children
+  const familyUnits = new Map();
+  
+  // Find parent-child relationships and organize them by family unit
+  relationships.forEach(rel => {
+    if (rel.type === 'parent' || rel.type === 'child') {
+      const parentId = rel.type === 'parent' ? rel.fromId.toString() : rel.toId.toString();
+      const childId = rel.type === 'parent' ? rel.toId.toString() : rel.fromId.toString();
+      
+      // Find all spouses of this parent
+      const spouseRels = relationships.filter(r => 
+        r.type === 'spouse' && (r.fromId.toString() === parentId || r.toId.toString() === parentId)
+      );
+      
+      // For each spouse pair, add this child
+      if (spouseRels.length > 0) {
+        spouseRels.forEach(spouseRel => {
+          const spouseId = spouseRel.fromId.toString() === parentId ? 
+            spouseRel.toId.toString() : spouseRel.fromId.toString();
+          
+          // Create a unique key for this family unit
+          const familyKey = [parentId, spouseId].sort().join('-');
+          
+          if (!familyUnits.has(familyKey)) {
+            familyUnits.set(familyKey, new Set());
+          }
+          
+          familyUnits.get(familyKey).add(childId);
+        });
+      } else {
+        // Single parent case
+        const familyKey = `single-${parentId}`;
+        
+        if (!familyUnits.has(familyKey)) {
+          familyUnits.set(familyKey, new Set());
+        }
+        
+        familyUnits.get(familyKey).add(childId);
+      }
+    }
+  });
+
   // Second pass: process relationships
   relationships.forEach(rel => {
     const fromId = rel.fromId.toString();
@@ -93,6 +135,48 @@ export const toFamilyChartFormat = (persons, relationships) => {
           toNode.rels.siblings.push(fromId);
         }
         break;
+    }
+  });
+
+  // Add family unit information to ensure proper parent-child rendering
+  familyUnits.forEach((childrenIds, familyKey) => {
+    if (familyKey.startsWith('single-')) {
+      // Single parent case
+      const parentId = familyKey.replace('single-', '');
+      const parentNode = nodesMap.get(parentId);
+      
+      if (parentNode) {
+        // Ensure children array exists
+        if (!parentNode.rels.children) parentNode.rels.children = [];
+        
+        // Add all children
+        childrenIds.forEach(childId => {
+          if (!parentNode.rels.children.includes(childId)) {
+            parentNode.rels.children.push(childId);
+          }
+        });
+      }
+    } else {
+      // Two parents case - add children to both parents
+      const [parent1Id, parent2Id] = familyKey.split('-');
+      const parent1Node = nodesMap.get(parent1Id);
+      const parent2Node = nodesMap.get(parent2Id);
+      
+      if (parent1Node && parent2Node) {
+        // Ensure children arrays exist
+        if (!parent1Node.rels.children) parent1Node.rels.children = [];
+        if (!parent2Node.rels.children) parent2Node.rels.children = [];
+        
+        // Add all children to both parents
+        childrenIds.forEach(childId => {
+          if (!parent1Node.rels.children.includes(childId)) {
+            parent1Node.rels.children.push(childId);
+          }
+          if (!parent2Node.rels.children.includes(childId)) {
+            parent2Node.rels.children.push(childId);
+          }
+        });
+      }
     }
   });
 
