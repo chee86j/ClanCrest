@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Navigate } from "react-router-dom";
-import FamilyTree from "../components/tree/FamilyTree";
+import FamilyTreeWithRelativesTree from "../components/tree/FamilyTreeWithRelativesTree";
 
 /**
  * Authentication gate component that shows login prompt for non-authenticated users
@@ -76,11 +76,13 @@ const Home = () => {
         <div className="flex-1 bg-white rounded-lg shadow-lg overflow-hidden border border-gray-200">
           <div className="flex flex-col h-full">
             <div className="p-4 border-b border-gray-200 bg-gray-50">
-              <h2 className="text-2xl font-semibold text-center text-gray-800">Your Family Tree</h2>
+              <h2 className="text-2xl font-semibold text-center text-gray-800">
+                Your Family Tree
+              </h2>
             </div>
             <div className="flex-1 relative">
               <AuthGate>
-                <FamilyTree />
+                <FamilyTreeWithRelativesTree />
               </AuthGate>
             </div>
           </div>
