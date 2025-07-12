@@ -110,3 +110,31 @@ Renders interactive speech bubbles next to the nodes showing:
 You are my [English kinship term]
 你是我的 [Mandarin kinship term]
 ```
+
+## Addendum 
+Goals Inherited from 23andMe:
+
+🧩 Smart Node Expansion: Click a person to add a parent, sibling, spouse, or child in context
+
+🔗 Auto-Linked Relationships: Relationships are inferred and visualized automatically
+
+🧭 Clear Tree Layout: Horizontal generational layout with intuitive snap-to placement
+
+📱 Mobile Optimization: Drag, zoom, and pan on mobile and tablet interfaces
+
+🔄 Undo/Redo Support: Maintain confidence while experimenting with your family structure
+
+
+Enhancements Unique to ClanCrest:
+
+🌍 Multilingual Kinship Terms: English, Mandarin, and planned support for other systems (e.g., Korean, Indian)
+
+🤖 AI-Powered Chatbot: Ask in plain language: “How is Alice related to John?” and receive a visual + bilingual explanation
+
+🧠 Cultural Templates: Support for Eastern and Western family norms (e.g., hierarchical generational roles, honorifics)
+
+🖼️ Rich Metadata Support: Names, birth/death dates, occupations, photos, notes
+
+🏷️ Relationship Path Highlighting: Visually trace the shortest path between any two members
+
+📤 Export & Share Trees: Planned features include image export and shared public links
