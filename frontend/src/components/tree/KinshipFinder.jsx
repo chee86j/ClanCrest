@@ -1,126 +1,189 @@
-import { useState } from "react";
-import axios from "axios";
+import React, { useState, useEffect } from "react";
+import PropTypes from "prop-types";
+import kinshipService from "../../services/kinshipService";
 
-/**
- * Component for finding kinship relationship between two people
- */
-const KinshipFinder = ({ persons }) => {
-  const [fromId, setFromId] = useState("");
-  const [toId, setToId] = useState("");
+const KinshipFinder = ({ persons, relationships }) => {
+  const [fromPerson, setFromPerson] = useState("");
+  const [toPerson, setToPerson] = useState("");
+  const [language, setLanguage] = useState("en");
   const [result, setResult] = useState(null);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const handleFindKinship = async (e) => {
-    e.preventDefault();
+  const handleFindRelationship = async () => {
+    if (!fromPerson || !toPerson) {
+      return;
+    }
+
+    setLoading(true);
     setError(null);
-    setResult(null);
 
     try {
-      // Get auth token from localStorage
-      const token = localStorage.getItem("token");
-      if (!token) {
-        setError("You must be logged in to use this feature");
-        return;
-      }
-
-      const response = await axios.get(
-        `${import.meta.env.VITE_BACKEND_URL}/api/kinship`,
-        {
-          params: { from: fromId, to: toId },
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
+      const relationshipResult = await kinshipService.findRelationship(
+        fromPerson,
+        toPerson,
+        language
       );
-      setResult(response.data);
-    } catch (err) {
-      console.error("Kinship error:", err);
-      if (err.response?.status === 401) {
-        setError("Authentication required. Please log in again.");
-      } else {
-        setError(
-          err.response?.data?.error || "Failed to fetch kinship relationship"
-        );
-      }
+
+      setResult({
+        fromName: `${relationshipResult.fromPerson.firstName} ${relationshipResult.fromPerson.lastName}`,
+        toName: `${relationshipResult.toPerson.firstName} ${relationshipResult.toPerson.lastName}`,
+        kinshipTerm: relationshipResult.kinship.term,
+        kinshipDescription: relationshipResult.kinship.description,
+        path: relationshipResult.path,
+        language,
+      });
+    } catch (error) {
+      console.error("Error finding relationship:", error);
+      setError("Failed to find relationship. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="p-4 bg-white rounded-lg shadow">
-      <h2 className="text-xl font-semibold mb-4">Find Relationship</h2>
+    <div className="bg-white rounded-lg border border-gray-200 p-4">
+      <h2 className="text-xl font-semibold mb-4">Kinship Finder</h2>
+      <p className="text-sm text-gray-600 mb-4">
+        Discover how two family members are related to each other
+      </p>
 
-      <form onSubmit={handleFindKinship} className="space-y-4">
-        <div className="space-y-2">
-          <label className="block text-sm font-medium">From Person:</label>
-          <select
-            value={fromId}
-            onChange={(e) => setFromId(e.target.value)}
-            className="w-full p-2 border rounded"
-            required
+      <div className="space-y-4">
+        <div>
+          <label
+            htmlFor="fromPerson"
+            className="block text-sm font-medium text-gray-700 mb-1"
           >
-            <option value="">Select a person...</option>
-            {persons?.map((person) => (
-              <option key={person.id} value={person.id}>
-                {person.nameZh
-                  ? `${person.name} (${person.nameZh})`
-                  : person.name}
+            From Person
+          </label>
+          <select
+            id="fromPerson"
+            value={fromPerson}
+            onChange={(e) => setFromPerson(e.target.value)}
+            className="w-full border border-gray-300 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="">Select a person</option>
+            {persons.map((person) => (
+              <option key={`from-${person.id}`} value={person.id}>
+                {person.firstName} {person.lastName}
               </option>
             ))}
           </select>
         </div>
 
-        <div className="space-y-2">
-          <label className="block text-sm font-medium">To Person:</label>
-          <select
-            value={toId}
-            onChange={(e) => setToId(e.target.value)}
-            className="w-full p-2 border rounded"
-            required
+        <div>
+          <label
+            htmlFor="toPerson"
+            className="block text-sm font-medium text-gray-700 mb-1"
           >
-            <option value="">Select a person...</option>
-            {persons?.map((person) => (
-              <option key={person.id} value={person.id}>
-                {person.nameZh
-                  ? `${person.name} (${person.nameZh})`
-                  : person.name}
+            To Person
+          </label>
+          <select
+            id="toPerson"
+            value={toPerson}
+            onChange={(e) => setToPerson(e.target.value)}
+            className="w-full border border-gray-300 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="">Select a person</option>
+            {persons.map((person) => (
+              <option key={`to-${person.id}`} value={person.id}>
+                {person.firstName} {person.lastName}
               </option>
             ))}
+          </select>
+        </div>
+
+        <div>
+          <label
+            htmlFor="language"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
+            Language
+          </label>
+          <select
+            id="language"
+            value={language}
+            onChange={(e) => setLanguage(e.target.value)}
+            className="w-full border border-gray-300 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            <option value="en">English</option>
+            <option value="zh">Mandarin (中文)</option>
           </select>
         </div>
 
         <button
-          type="submit"
-          className="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 transition"
-          disabled={!fromId || !toId}
+          onClick={handleFindRelationship}
+          disabled={!fromPerson || !toPerson || loading}
+          className={`w-full py-2 px-4 rounded-md ${
+            !fromPerson || !toPerson || loading
+              ? "bg-gray-300 cursor-not-allowed"
+              : "bg-indigo-600 hover:bg-indigo-700 text-white"
+          }`}
         >
-          Find Relationship
+          {loading ? "Finding Relationship..." : "Find Relationship"}
         </button>
-      </form>
+      </div>
 
       {error && (
-        <div className="mt-4 p-3 bg-red-100 text-red-700 rounded">{error}</div>
+        <div className="mt-4 p-3 bg-red-50 text-red-700 rounded-md">
+          {error}
+        </div>
       )}
 
       {result && (
-        <div className="mt-4 p-4 bg-gray-50 rounded">
-          <h3 className="font-medium mb-2">Relationship:</h3>
-          <p className="text-lg">
-            {result.relationship.english}
-            {result.relationship.mandarin && (
-              <span className="ml-2 text-gray-600">
-                ({result.relationship.mandarin})
-              </span>
-            )}
+        <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+          <h3 className="font-medium mb-2">Relationship Result</h3>
+          <p className="mb-1">
+            <span className="font-semibold">{result.fromName}</span> is{" "}
+            <span className="font-semibold text-indigo-600">
+              {result.kinshipTerm}
+            </span>{" "}
+            to <span className="font-semibold">{result.toName}</span>
           </p>
-          {result.relationship.path.length > 0 && (
-            <p className="text-sm text-gray-600 mt-2">
-              Path: {result.relationship.path.join(" → ")}
+          {result.language === "zh" && (
+            <p className="text-sm text-gray-600">
+              {result.fromName} 是 {result.toName} 的{result.kinshipTerm}
             </p>
+          )}
+          <p className="text-sm text-gray-600 mt-2">
+            {result.kinshipDescription}
+          </p>
+
+          {result.path && result.path.length > 0 && (
+            <div className="mt-3 pt-3 border-t border-gray-200">
+              <p className="text-xs text-gray-500">Relationship path:</p>
+              <div className="text-xs text-gray-600 mt-1">
+                {result.path.map((step, index) => (
+                  <div key={index} className="flex items-center">
+                    <span>{index > 0 ? "→ " : ""}</span>
+                    <span>{step.type} relationship</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
         </div>
       )}
     </div>
   );
+};
+
+KinshipFinder.propTypes = {
+  persons: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.string.isRequired,
+      firstName: PropTypes.string.isRequired,
+      lastName: PropTypes.string.isRequired,
+    })
+  ).isRequired,
+  relationships: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.string.isRequired,
+      fromId: PropTypes.string.isRequired,
+      toId: PropTypes.string.isRequired,
+      type: PropTypes.string.isRequired,
+    })
+  ).isRequired,
 };
 
 export default KinshipFinder;

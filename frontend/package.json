@@ -1,7 +1,7 @@
 {
-  "name": "frontend",
+  "name": "clancrest",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -18,9 +18,9 @@
     "prop-types": "^15.8.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-family-tree": "^3.2.0",
     "react-router-dom": "^7.6.3",
-    "relatives-tree": "^3.2.2"
+    "react-d3-tree": "^3.6.2",
+    "d3": "^7.8.5"
   },
   "devDependencies": {
     "@eslint/js": "^8.56.0",

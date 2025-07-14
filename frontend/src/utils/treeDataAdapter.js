@@ -1,16 +1,104 @@
 /**
- * Utility for resolving kinship relationships between people
+ * Converts API person and relationship data to react-d3-tree compatible format
+ * @param {Array} persons - Array of person objects from the API
+ * @param {Array} relationships - Array of relationship objects from the API
+ * @param {String} rootId - ID of the person to use as the root node (optional)
+ * @returns {Object} - Tree data structure compatible with react-d3-tree
  */
+export const convertToTreeData = (persons, relationships, rootId = null) => {
+  if (!persons || !persons.length) {
+    return { name: "No Data", children: [] };
+  }
+
+  // Create a map of persons by ID for quick lookup
+  const personsMap = persons.reduce((map, person) => {
+    map[person.id] = { ...person, children: [] };
+    return map;
+  }, {});
+
+  // If no rootId is provided, find a person with no parents
+  if (!rootId) {
+    // Find all persons who are parents
+    const parentIds = new Set(
+      relationships
+        .filter((rel) => rel.type === "parent")
+        .map((rel) => rel.fromId)
+    );
+
+    // Find persons who are not children in any relationship
+    const potentialRoots = persons.filter(
+      (person) =>
+        !relationships.some(
+          (rel) => rel.type === "parent" && rel.toId === person.id
+        )
+    );
+
+    // Use the first potential root, or the first person if no potential roots
+    rootId = potentialRoots.length > 0 ? potentialRoots[0].id : persons[0].id;
+  }
+
+  // Build the tree structure
+  relationships.forEach((rel) => {
+    if (
+      rel.type === "parent" &&
+      personsMap[rel.fromId] &&
+      personsMap[rel.toId]
+    ) {
+      personsMap[rel.fromId].children.push(personsMap[rel.toId]);
+    }
+  });
+
+  // Handle spouse relationships
+  relationships
+    .filter((rel) => rel.type === "spouse")
+    .forEach((rel) => {
+      if (personsMap[rel.fromId] && personsMap[rel.toId]) {
+        // If the person already has children, add the spouse as a special attribute
+        personsMap[rel.fromId].spouse = personsMap[rel.toId];
+        personsMap[rel.toId].spouse = personsMap[rel.fromId];
+      }
+    });
+
+  // Convert the map to the tree structure starting from the root
+  const buildTree = (personId) => {
+    const person = personsMap[personId];
+    if (!person) return null;
+
+    const node = {
+      name: `${person.firstName || ""} ${person.lastName || ""}`.trim(),
+      firstName: person.firstName,
+      lastName: person.lastName,
+      chineseName: person.chineseName,
+      gender: person.gender,
+      id: person.id,
+      attributes: {
+        birthDate: person.birthDate,
+      },
+      children: person.children
+        .map((child) => buildTree(child.id))
+        .filter(Boolean),
+    };
+
+    // Add spouse as a child with special marker if present
+    if (person.spouse) {
+      node.attributes.hasSpouse = true;
+    }
+
+    return node;
+  };
+
+  return buildTree(rootId) || { name: "No Data", children: [] };
+};
 
 /**
- * Find the shortest relationship path between two persons
- * @param {Array} persons - Array of person objects
- * @param {Array} relationships - Array of relationship objects
+ * Finds the shortest relationship path between two persons
+ * @param {Array} persons - Array of person objects from the API
+ * @param {Array} relationships - Array of relationship objects from the API
  * @param {String} fromId - ID of the starting person
  * @param {String} toId - ID of the target person
  * @returns {Array} - Array of relationship objects representing the path
  */
-const findRelationshipPath = (persons, relationships, fromId, toId) => {
+export const findRelationshipPath = (persons, relationships, fromId, toId) => {
   if (!persons || !relationships || !fromId || !toId) {
     return [];
   }
@@ -97,7 +185,7 @@ const getInverseRelationType = (relationType) => {
  * @param {String} language - Language code ('en' for English, 'zh' for Mandarin)
  * @returns {Object} - Object containing kinship term and description
  */
-const mapPathToKinshipTerm = (path, language = "en") => {
+export const mapPathToKinshipTerm = (path, language = "en") => {
   if (!path || path.length === 0) {
     return {
       term: language === "en" ? "self" : "自己",
@@ -315,8 +403,88 @@ const mapPathToKinshipTerm = (path, language = "en") => {
   };
 };
 
-module.exports = {
-  findRelationshipPath,
-  getInverseRelationType,
-  mapPathToKinshipTerm,
+/**
+ * Generates a unique ID for new persons or relationships
+ * @returns {String} - Unique ID string
+ */
+export const generateUniqueId = () => {
+  return Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
+};
+
+/**
+ * Extracts all unique persons from a tree data structure
+ * @param {Object} treeData - Tree data structure from react-d3-tree
+ * @returns {Array} - Array of person objects
+ */
+export const extractPersonsFromTree = (treeData) => {
+  const persons = [];
+
+  const traverseTree = (node) => {
+    if (!node) return;
+
+    // Extract person data from node
+    const person = {
+      id: node.id || generateUniqueId(),
+      firstName: node.firstName || "",
+      lastName: node.lastName || "",
+      chineseName: node.chineseName || null,
+      gender: node.gender || "unknown",
+      birthDate: node.attributes?.birthDate || null,
+    };
+
+    persons.push(person);
+
+    // Traverse children
+    if (node.children && node.children.length > 0) {
+      node.children.forEach((child) => traverseTree(child));
+    }
+  };
+
+  traverseTree(treeData);
+  return persons;
+};
+
+/**
+ * Extracts all relationships from a tree data structure
+ * @param {Object} treeData - Tree data structure from react-d3-tree
+ * @returns {Array} - Array of relationship objects
+ */
+export const extractRelationshipsFromTree = (treeData) => {
+  const relationships = [];
+
+  const traverseTree = (node) => {
+    if (!node) return;
+
+    // Extract parent-child relationships
+    if (node.children && node.children.length > 0) {
+      node.children.forEach((child) => {
+        relationships.push({
+          id: generateUniqueId(),
+          fromId: node.id,
+          toId: child.id,
+          type: "parent",
+        });
+
+        traverseTree(child);
+      });
+    }
+  };
+
+  traverseTree(treeData);
+  return relationships;
+};
+
+/**
+ * Exports the tree data to a JSON file
+ * @param {Object} treeData - Tree data structure
+ * @returns {Object} - JSON object with persons and relationships
+ */
+export const exportTreeData = (treeData) => {
+  const persons = extractPersonsFromTree(treeData);
+  const relationships = extractRelationshipsFromTree(treeData);
+
+  return {
+    persons,
+    relationships,
+  };
 };

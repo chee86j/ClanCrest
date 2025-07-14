@@ -1,126 +1,197 @@
-const jwt = require('jsonwebtoken');
-const { OAuth2Client } = require('google-auth-library');
-const { PrismaClient } = require('@prisma/client');
-const { errorHandler, AuthError } = require('../utils/errorHandler');
+const { PrismaClient } = require("@prisma/client");
+const jwt = require("jsonwebtoken");
+const axios = require("axios");
+const dotenv = require("dotenv");
+
+// Load environment variables
+dotenv.config();
 
 const prisma = new PrismaClient();
-const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 /**
- * Generate JWT token
- * @param {Object} user - User object
- * @returns {string} JWT token
+ * Authenticate with Google OAuth
+ * This endpoint is for the token-based approach (not used with redirect flow)
  */
-const generateToken = (user) => {
-  if (!process.env.JWT_SECRET) {
-    throw new Error('JWT_SECRET not configured');
-  }
-  
-  return jwt.sign(
-    { 
-      id: user.id,
-      email: user.email,
-      name: user.name
-    },
-    process.env.JWT_SECRET,
-    { 
-      expiresIn: process.env.JWT_EXPIRES_IN || '7d'
-    }
-  );
-};
-
-/**
- * Handle Google OAuth callback
- */
-const handleGoogleAuth = errorHandler(async (req, res) => {
-  const { token } = req.body;
-
-  if (!token) {
-    throw new AuthError('No token provided');
-  }
-
+const googleAuth = async (req, res, next) => {
   try {
-    // Get user info from Google using the access token
-    const response = await fetch(
-      `https://www.googleapis.com/oauth2/v2/userinfo?access_token=${token}`
-    );
-    
-    if (!response.ok) {
-      throw new Error('Failed to get user info from Google');
+    const { token } = req.body;
+
+    if (!token) {
+      return res.status(400).json({ message: "Token is required" });
     }
 
-    const googleUser = await response.json();
-    console.log("✅ Google user verified:", googleUser.email);
+    // Verify the token with Google
+    const googleResponse = await axios.get(
+      `https://www.googleapis.com/oauth2/v3/userinfo?access_token=${token}`
+    );
 
-    // Find or create user
+    const { sub, email, name, picture } = googleResponse.data;
+
+    // Check if user exists
     let user = await prisma.user.findUnique({
-      where: { email: googleUser.email }
+      where: { googleId: sub },
     });
 
     if (!user) {
+      // Create new user
       user = await prisma.user.create({
         data: {
-          email: googleUser.email,
-          name: googleUser.name,
-          googleId: googleUser.id,
-          picture: googleUser.picture
-        }
+          googleId: sub,
+          email,
+          name,
+          avatar: picture,
+        },
       });
-      console.log("👤 Created new user:", user.email);
     } else {
-      // Update existing user's Google info
+      // Update existing user
       user = await prisma.user.update({
         where: { id: user.id },
         data: {
-          googleId: googleUser.id,
-          picture: googleUser.picture,
-          name: googleUser.name
-        }
+          email,
+          name,
+          avatar: picture,
+        },
       });
-      console.log("👤 Updated existing user:", user.email);
     }
 
-    // Generate JWT
-    const authToken = generateToken(user);
+    // Generate JWT token
+    const jwtToken = jwt.sign(
+      { userId: user.id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
 
-    res.json({
-      token: authToken,
+    res.status(200).json({
+      token: jwtToken,
       user: {
         id: user.id,
         email: user.email,
         name: user.name,
-        picture: user.picture
-      }
+        avatar: user.avatar,
+      },
     });
   } catch (error) {
-    console.error("🚨 Google auth error:", error);
-    throw new AuthError('Failed to authenticate with Google');
+    console.error("Google Auth Error:", error);
+    next(error);
   }
-});
+};
 
 /**
- * Get current user profile
+ * Handle Google OAuth callback
+ * This endpoint is for the redirect-based OAuth flow
  */
-const getProfile = errorHandler(async (req, res) => {
-  const user = await prisma.user.findUnique({
-    where: { id: req.user.id },
-    select: {
-      id: true,
-      email: true,
-      name: true,
-      picture: true,
-      createdAt: true
+const googleCallback = async (req, res, next) => {
+  try {
+    const { code } = req.body;
+
+    if (!code) {
+      return res
+        .status(400)
+        .json({ message: "Authorization code is required" });
     }
-  });
 
-  if (!user) {
-    throw new AuthError('User not found');
+    // Exchange the authorization code for tokens
+    const tokenResponse = await axios.post(
+      "https://oauth2.googleapis.com/token",
+      {
+        code,
+        client_id: process.env.GOOGLE_CLIENT_ID,
+        client_secret: process.env.GOOGLE_CLIENT_SECRET,
+        redirect_uri: `${process.env.FRONTEND_URL}/auth`,
+        grant_type: "authorization_code",
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    const { access_token } = tokenResponse.data;
+
+    // Get user info with the access token
+    const googleResponse = await axios.get(
+      `https://www.googleapis.com/oauth2/v3/userinfo?access_token=${access_token}`
+    );
+
+    const { sub, email, name, picture } = googleResponse.data;
+
+    // Check if user exists
+    let user = await prisma.user.findUnique({
+      where: { googleId: sub },
+    });
+
+    if (!user) {
+      // Create new user
+      user = await prisma.user.create({
+        data: {
+          googleId: sub,
+          email,
+          name,
+          avatar: picture,
+        },
+      });
+    } else {
+      // Update existing user
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          email,
+          name,
+          avatar: picture,
+        },
+      });
+    }
+
+    // Generate JWT token
+    const jwtToken = jwt.sign(
+      { userId: user.id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    res.status(200).json({
+      token: jwtToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        avatar: user.avatar,
+      },
+    });
+  } catch (error) {
+    console.error("Google Callback Error:", error);
+    next(error);
   }
+};
 
-  res.json(user);
-});
+/**
+ * Get current user
+ */
+const getCurrentUser = async (req, res, next) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.userId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        avatar: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json(user);
+  } catch (error) {
+    next(error);
+  }
+};
 
 module.exports = {
-  handleGoogleAuth,
-  getProfile
+  googleAuth,
+  googleCallback,
+  getCurrentUser,
 };

@@ -1,92 +1,46 @@
 const express = require("express");
-const router = express.Router();
-const { errorHandler, NotFoundError } = require("../utils/errorHandler");
-const { PrismaClient } = require("@prisma/client");
-const { validateRequiredFields } = require("../utils/validation");
-const { getKinship } = require("../controllers/kinshipController");
-const {
-  handleGoogleAuth,
-  getProfile,
-} = require("../controllers/authController");
-const {
-  createRelationship,
-  updateRelationship,
-  deleteRelationship,
-  getPersonRelationships,
-} = require("../controllers/relationshipController");
-const authMiddleware = require("../middleware/auth");
 const personRoutes = require("./personRoutes");
+const relationshipRoutes = require("./relationshipRoutes");
+const kinshipRoutes = require("./kinshipRoutes");
+const authRoutes = require("./authRoutes");
 
-const prisma = new PrismaClient();
+const router = express.Router();
 
-// Public routes
-router.get("/status", (req, res) => {
-  res.json({ status: "API is running" });
-});
-
-// Auth routes
-router.post("/auth/google", handleGoogleAuth);
-router.get("/auth/profile", authMiddleware, getProfile);
-
-// Person routes
+// API routes
 router.use("/persons", personRoutes);
+router.use("/relationships", relationshipRoutes);
+router.use("/kinship", kinshipRoutes);
+router.use("/auth", authRoutes);
 
-// Relationship routes
-router.post("/relationships", authMiddleware, createRelationship);
-router.put("/relationships/:id", authMiddleware, updateRelationship);
-router.delete("/relationships/:id", authMiddleware, deleteRelationship);
-router.get(
-  "/persons/:id/relationships",
-  authMiddleware,
-  getPersonRelationships
-);
-
-// Get all relationships for the user
-router.get(
-  "/relationships",
-  authMiddleware,
-  errorHandler(async (req, res) => {
-    console.log("🔗 Fetching relationships for user:", req.user.id);
-
-    const relationships = await prisma.relationship.findMany({
-      where: {
-        OR: [
-          { from: { userId: req.user.id } },
-          { to: { userId: req.user.id } },
-        ],
+// API documentation route
+router.get("/docs", (req, res) => {
+  res.status(200).json({
+    message: "ClanCrest API Documentation",
+    endpoints: {
+      persons: {
+        GET: "/api/persons - Get all persons",
+        POST: "/api/persons - Create a new person",
+        GET_ONE: "/api/persons/:id - Get a specific person",
+        PATCH: "/api/persons/:id - Update a specific person",
+        DELETE: "/api/persons/:id - Delete a specific person",
       },
-      include: {
-        from: true,
-        to: true,
+      relationships: {
+        GET: "/api/relationships - Get all relationships",
+        POST: "/api/relationships - Create a new relationship",
+        GET_ONE: "/api/relationships/:id - Get a specific relationship",
+        PATCH: "/api/relationships/:id - Update a specific relationship",
+        DELETE: "/api/relationships/:id - Delete a specific relationship",
       },
-    });
-
-    console.log(`✅ Found ${relationships.length} relationships`);
-    res.json({
-      success: true,
-      data: relationships,
-      count: relationships.length,
-    });
-  })
-);
-
-// Kinship route
-router.get("/kinship", authMiddleware, getKinship);
-
-// Health check
-router.get(
-  "/health",
-  errorHandler(async (req, res) => {
-    res.json({ status: "ok", timestamp: new Date().toISOString() });
-  })
-);
-
-// Error route for testing error handling
-router.get(
-  "/error",
-  errorHandler(async (req, res) => {
-    throw new Error("Test error");
-  })
-);
+      kinship: {
+        POST: "/api/kinship/find - Find relationship between two persons",
+        POST: "/api/kinship/ask - Ask AI about kinship relationships",
+      },
+      auth: {
+        POST: "/api/auth/google - Authenticate with Google OAuth",
+        GET: "/api/auth/me - Get current user (requires authentication)",
+      },
+    },
+  });
+});
 
 module.exports = router;

@@ -1,35 +1,62 @@
 const express = require("express");
 const cors = require("cors");
 const routes = require("./routes");
-const { errorHandler } = require("./utils/errorHandler");
+const dotenv = require("dotenv");
 
-// Initialize express app
+// Load environment variables
+dotenv.config();
+
+// Initialize Express app
 const app = express();
 
-// Middleware
+// CORS configuration
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(",")
+  : ["http://localhost:5173"];
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:5173",
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps, curl, etc.)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.indexOf(origin) === -1) {
+        const msg = `The CORS policy for this site does not allow access from the specified origin: ${origin}`;
+        return callback(new Error(msg), false);
+      }
+      return callback(null, true);
+    },
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Routes
+// API Routes
 app.use("/api", routes);
 
-// Centralized error handling middleware (must be last)
-app.use(errorHandler);
+// Health check route
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "ok", message: "ClanCrest API is running" });
+});
 
-// 404 handler (must be after error handler)
-app.use((req, res) => {
-  res.status(404).json({
-    error: "Route not found",
-    timestamp: new Date().toISOString(),
+// Default route
+app.get("/", (req, res) => {
+  res.status(200).json({
+    message: "Welcome to ClanCrest API",
+    version: "1.0.0",
+    documentation: "/api/docs",
+  });
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error("Error:", err.stack);
+  res.status(err.statusCode || 500).json({
+    error: {
+      message: err.message || "Internal Server Error",
+      status: err.statusCode || 500,
+    },
   });
 });
 

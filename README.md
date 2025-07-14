@@ -1,112 +1,156 @@
-###🏰 ClanCrest
-A visual family tree builder that helps you map your family's lineage using a clean drag-and-drop interface. Supports defining relationships, multilingual metadata (including Chinese names), and an interactive "Who Am I to You?" feature that displays kinship terms in English and Mandarin.
+# ClanCrest - Family Tree Visualization
 
-##Tech Stack
-Frontend: React + Vite + Tailwind CSS + React Flow
-Backend: Node.js + Express
-ORM: Prisma
-Database: SQLite (local development) / PostgreSQL (production)
-Auth: Google OAuth 2.0 (via Clerk or @react-oauth/google, optional)
-Hosting: Vercel (frontend), Railway (backend + DB)
+ClanCrest is a comprehensive family tree visualization application that allows users to create, manage, and explore family relationships with multilingual kinship intelligence.
 
-##Development Setup
+## Features
 
-1. Clone the repository
-2. Install dependencies:
-   ```bash
-   cd frontend && npm install
-   cd ../backend && npm install
-   ```
-3. Database setup:
-   - Local development uses SQLite (no setup required)
-   - Production will use PostgreSQL (configuration via DATABASE_URL)
-   ```bash
-   cd backend
-   npx prisma migrate dev
-   ```
+- **Interactive Family Tree**: Visualize family connections using react-d3-tree with elbow connectors
+- **Person Management**: Create, edit, and delete family members
+- **Relationship Management**: Define various relationship types (parent, child, spouse, sibling)
+- **Kinship Intelligence**: Find relationships between any two family members
+- **Multilingual Support**: View kinship terms in English and Mandarin Chinese
+- **AI Chatbot**: Ask questions about family relationships (requires OpenAI API key)
+- **Export Functionality**: Save your family tree as PDF
 
-##Features
-✅ Build a family tree with draggable nodes
-✅ Define directional relationships (parent, sibling, spouse, child)
-✅ Add multilingual metadata (e.g., Chinese names)
-✅ Display kinship path and terms in both English and Mandarin
-✅ Save and load trees (with persistent backend storage)
-✅ Interactive speech bubbles showing kinship between selected nodes
-✅ Optional: AI chatbot assistant (future feature — for helping users build their tree or explain kinship)
+## Tech Stack
 
-##Future Features
-✅ Add more kinship terms and languages
-✅ Add more relationship types (e.g., grandparent, aunt/uncle, cousin)
-✅ Add more metadata fields (e.g., birth date, death date, occupation)
-✅ Add more relationship types (e.g., grandparent, aunt/uncle, cousin)
+### Frontend
 
-##Monorepo Structure
+- React.js
+- Tailwind CSS
+- react-d3-tree
+- Axios for API communication
+- HTML-to-Image & jsPDF for exports
+
+### Backend
+
+- Node.js
+- Express.js
+- Prisma ORM
+- SQLite (development) / PostgreSQL (production)
+- OpenAI API integration (optional)
+
+## Project Structure
 
 ```
 clancrest/
 ├── backend/
-│   ├── .env                       # Backend env variables
 │   ├── prisma/
-│   │   ├── schema.prisma          # Prisma DB schema
-│   │   ├── dev.db                 # SQLite database (local development)
-│   │   └── migrations/            # Database migrations
+│   │   ├── schema.prisma
 │   ├── src/
 │   │   ├── controllers/
-│   │   │   ├── personController.js
-│   │   │   └── relationshipController.js
 │   │   ├── routes/
-│   │   │   ├── personRoutes.js
-│   │   │   └── relationshipRoutes.js
 │   │   ├── utils/
-│   │   │   └── kinshipResolver.js  # DFS/BFS + kinship mapping logic
-│   │   ├── app.js                  # Express app setup
-│   │   └── server.js               # Server entry point
-│   ├── package.json
-│   └── README.md
-│
+│   │   ├── app.js
+│   │   └── server.js
 ├── frontend/
-│   ├── .env                        # Frontend env variables
-│   ├── public/
-│   │   └── clancrest.svg                # Future logo
 │   ├── src/
 │   │   ├── components/
-│   │   │   ├── layout/
-│   │   │   │   ├── Navbar.jsx
-│   │   │   │   ├── Footer.jsx
-│   │   │   │   └── Header.jsx
-│   │   │   ├── tree/
-│   │   │   │   ├── NodeForm.jsx
-│   │   │   │   ├── RelationshipForm.jsx
-│   │   │   │   └── KinshipDisplay.jsx
 │   │   ├── pages/
-│   │   │   ├── Home.jsx
-│   │   │   ├── About.jsx
-│   │   │   └── Auth.jsx
-│   │   ├── App.jsx                  # React Router + layout wrapper
-│   │   ├── main.jsx                 # Vite React entry point
-│   │   └── index.css                # Tailwind CSS entry
-│   ├── tailwind.config.cjs
-│   ├── postcss.config.cjs
-│   ├── package.json                 # Dependencies
-│   └── vite.config.js
-│
-├── .gitignore
-├── README.md
-└── package-lock.json
+│   │   ├── services/
+│   │   ├── utils/
+│   │   └── main.jsx
+├── .env
+└── README.md
 ```
 
-##Kinship Logic
-The app uses a graph traversal algorithm (DFS or BFS) to compute the shortest path between two nodes.
+## Getting Started
 
-Maps relationship paths to English kinship terms.
+### Prerequisites
 
-Maps English terms to Mandarin using a static lookup (based on TheBeijinger kinship guide).
+- Node.js (v16 or higher)
+- npm or pnpm
+- SQLite (for development)
+- PostgreSQL (for production)
 
-Speech bubble display
+### Installation
 
-Renders interactive speech bubbles next to the nodes showing:
+1. Clone the repository:
 
-```
-You are my [English kinship term]
-你是我的 [Mandarin kinship term]
-```
+   ```
+   git clone https://github.com/yourusername/clancrest.git
+   cd clancrest
+   ```
+
+2. Install backend dependencies:
+
+   ```
+   cd backend
+   npm install
+   ```
+
+3. Set up environment variables:
+   Create a `.env` file in the backend directory with:
+
+   ```
+   NODE_ENV=development
+   PORT=3001
+   DATABASE_URL="file:./dev.db"
+   # Optional: OPENAI_API_KEY="your-api-key"
+   ```
+
+4. Initialize the database:
+
+   ```
+   npx prisma migrate dev --name init
+   ```
+
+5. Install frontend dependencies:
+
+   ```
+   cd ../frontend
+   npm install
+   ```
+
+6. Create a `.env` file in the frontend directory with:
+   ```
+   VITE_API_URL=http://localhost:3001/api
+   ```
+
+### Running the Application
+
+1. Start the backend server:
+
+   ```
+   cd backend
+   npm run dev
+   ```
+
+2. In a separate terminal, start the frontend:
+
+   ```
+   cd frontend
+   npm run dev
+   ```
+
+3. Open your browser and navigate to `http://localhost:5173`
+
+## Usage
+
+1. **Creating a Family Tree**:
+
+   - Start by adding a person using the "Add New Person" button
+   - Add more family members and establish relationships between them
+
+2. **Finding Relationships**:
+
+   - Use the Kinship Finder to discover how two family members are related
+   - Toggle between English and Mandarin Chinese for relationship terms
+
+3. **Using the AI Chatbot**:
+
+   - Click "Show Chatbot" to access the AI assistant
+   - Ask questions like "What is John's relationship to Emma?"
+
+4. **Exporting Your Tree**:
+   - Click "Export Tree" to save your family tree as a PDF
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Acknowledgments
+
+- [react-d3-tree](https://github.com/bkrem/react-d3-tree) for the tree visualization
+- [Tailwind CSS](https://tailwindcss.com/) for styling
+- [OpenAI](https://openai.com/) for the AI chatbot capabilities

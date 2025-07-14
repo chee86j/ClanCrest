@@ -1,377 +1,148 @@
 const { PrismaClient } = require("@prisma/client");
-const {
-  errorHandler,
-  ValidationError,
-  NotFoundError,
-} = require("../utils/errorHandler");
-const {
-  validatePersonName,
-  validateChineseName,
-  validateNotes,
-  validatePersonId,
-  validateImageId,
-  validateSearchQuery,
-  validateGender,
-} = require("../utils/validation");
-
 const prisma = new PrismaClient();
 
 /**
- * Get all persons for a user
+ * Get all persons
  */
-const getAllPersons = errorHandler(async (req, res) => {
-  const userId = req.user.id;
-
-  const persons = await prisma.person.findMany({
-    where: { userId },
-    orderBy: { name: "asc" },
-    include: {
-      relationshipsFrom: {
-        include: { to: true },
-      },
-      relationshipsTo: {
-        include: { from: true },
-      },
-    },
-  });
-
-  res.json({
-    success: true,
-    data: persons,
-    count: persons.length,
-  });
-});
+const getAllPersons = async (req, res, next) => {
+  try {
+    const persons = await prisma.person.findMany();
+    res.status(200).json(persons);
+  } catch (error) {
+    next(error);
+  }
+};
 
 /**
- * Get a single person by ID
+ * Get a specific person by ID
  */
-const getPersonById = errorHandler(async (req, res) => {
-  const { id } = req.params;
-  const userId = req.user.id;
+const getPersonById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
 
-  // Validate person ID
-  const idValidation = validatePersonId(id);
-  if (!idValidation.isValid) {
-    throw new ValidationError(idValidation.error);
-  }
-
-  const person = await prisma.person.findFirst({
-    where: {
-      id: idValidation.value,
-      userId,
-    },
-    include: {
-      relationshipsFrom: {
-        include: { to: true },
+    const person = await prisma.person.findUnique({
+      where: { id },
+      include: {
+        relationshipsFrom: true,
+        relationshipsTo: true,
       },
-      relationshipsTo: {
-        include: { from: true },
-      },
-    },
-  });
+    });
 
-  if (!person) {
-    throw new NotFoundError("Person");
+    if (!person) {
+      return res.status(404).json({ message: "Person not found" });
+    }
+
+    res.status(200).json(person);
+  } catch (error) {
+    next(error);
   }
-
-  res.json({
-    success: true,
-    data: person,
-  });
-});
+};
 
 /**
  * Create a new person
  */
-const createPerson = errorHandler(async (req, res) => {
-  const userId = req.user.id;
-  const { name, nameZh, notes, imageId, gender } = req.body;
+const createPerson = async (req, res, next) => {
+  try {
+    const { firstName, lastName, chineseName, birthDate, gender } = req.body;
 
-  // Validate all fields
-  const nameValidation = validatePersonName(name);
-  const chineseNameValidation = validateChineseName(nameZh);
-  const notesValidation = validateNotes(notes);
-  const imageIdValidation = validateImageId(imageId);
-  const genderValidation = validateGender(gender);
+    // Validate required fields
+    if (!firstName || !lastName || !gender) {
+      return res.status(400).json({
+        message: "First name, last name, and gender are required",
+      });
+    }
 
-  if (!nameValidation.isValid) {
-    throw new ValidationError(nameValidation.error);
+    // Create new person
+    const newPerson = await prisma.person.create({
+      data: {
+        firstName,
+        lastName,
+        chineseName,
+        birthDate: birthDate ? new Date(birthDate) : null,
+        gender,
+      },
+    });
+
+    res.status(201).json(newPerson);
+  } catch (error) {
+    next(error);
   }
-
-  if (!chineseNameValidation.isValid) {
-    throw new ValidationError(chineseNameValidation.error);
-  }
-
-  if (!notesValidation.isValid) {
-    throw new ValidationError(notesValidation.error);
-  }
-
-  if (!imageIdValidation.isValid) {
-    throw new ValidationError(imageIdValidation.error);
-  }
-
-  if (!genderValidation.isValid) {
-    throw new ValidationError(genderValidation.error);
-  }
-
-  const person = await prisma.person.create({
-    data: {
-      name: nameValidation.value,
-      nameZh: chineseNameValidation.value,
-      notes: notesValidation.value,
-      imageId: imageIdValidation.value,
-      gender: genderValidation.value,
-      userId,
-    },
-  });
-
-  console.log("✅ Person created:", person.name);
-  res.status(201).json({
-    success: true,
-    data: person,
-  });
-});
+};
 
 /**
- * Update an existing person
+ * Update a person
  */
-const updatePerson = errorHandler(async (req, res) => {
-  const { id } = req.params;
-  const userId = req.user.id;
-  const { name, nameZh, notes, imageId, gender, positionX, positionY } =
-    req.body;
+const updatePerson = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { firstName, lastName, chineseName, birthDate, gender } = req.body;
 
-  // Validate person ID
-  const idValidation = validatePersonId(id);
-  if (!idValidation.isValid) {
-    throw new ValidationError(idValidation.error);
+    // Check if person exists
+    const existingPerson = await prisma.person.findUnique({
+      where: { id },
+    });
+
+    if (!existingPerson) {
+      return res.status(404).json({ message: "Person not found" });
+    }
+
+    // Update person
+    const updatedPerson = await prisma.person.update({
+      where: { id },
+      data: {
+        firstName: firstName || existingPerson.firstName,
+        lastName: lastName || existingPerson.lastName,
+        chineseName:
+          chineseName !== undefined ? chineseName : existingPerson.chineseName,
+        birthDate: birthDate ? new Date(birthDate) : existingPerson.birthDate,
+        gender: gender || existingPerson.gender,
+      },
+    });
+
+    res.status(200).json(updatedPerson);
+  } catch (error) {
+    next(error);
   }
-
-  // Validate all fields
-  const nameValidation = validatePersonName(name);
-  const chineseNameValidation = validateChineseName(nameZh);
-  const notesValidation = validateNotes(notes);
-  const imageIdValidation = validateImageId(imageId);
-  const genderValidation = validateGender(gender);
-
-  if (!nameValidation.isValid) {
-    throw new ValidationError(nameValidation.error);
-  }
-
-  if (!chineseNameValidation.isValid) {
-    throw new ValidationError(chineseNameValidation.error);
-  }
-
-  if (!notesValidation.isValid) {
-    throw new ValidationError(notesValidation.error);
-  }
-
-  if (imageId !== undefined && imageId !== null && !imageIdValidation.isValid) {
-    throw new ValidationError(imageIdValidation.error);
-  }
-
-  if (!genderValidation.isValid) {
-    throw new ValidationError(genderValidation.error);
-  }
-
-  // Check if person exists and belongs to user
-  const existingPerson = await prisma.person.findFirst({
-    where: {
-      id: idValidation.value,
-      userId,
-    },
-  });
-
-  if (!existingPerson) {
-    throw new NotFoundError("Person");
-  }
-
-  const person = await prisma.person.update({
-    where: { id: idValidation.value },
-    data: {
-      name: nameValidation.value,
-      nameZh: chineseNameValidation.value,
-      notes: notesValidation.value,
-      gender: genderValidation.value,
-      ...(imageId !== undefined &&
-        imageId !== null && { imageId: imageIdValidation.value }),
-      ...(positionX !== undefined && { positionX: parseFloat(positionX) }),
-      ...(positionY !== undefined && { positionY: parseFloat(positionY) }),
-    },
-  });
-
-  console.log("✅ Person updated:", person.name);
-  res.json({
-    success: true,
-    data: person,
-  });
-});
+};
 
 /**
  * Delete a person
  */
-const deletePerson = errorHandler(async (req, res) => {
-  const { id } = req.params;
-  const userId = req.user.id;
+const deletePerson = async (req, res, next) => {
+  try {
+    const { id } = req.params;
 
-  // Validate person ID
-  const idValidation = validatePersonId(id);
-  if (!idValidation.isValid) {
-    throw new ValidationError(idValidation.error);
-  }
+    // Check if person exists
+    const existingPerson = await prisma.person.findUnique({
+      where: { id },
+    });
 
-  // Check if person exists and belongs to user
-  const existingPerson = await prisma.person.findFirst({
-    where: {
-      id: idValidation.value,
-      userId,
-    },
-  });
-
-  if (!existingPerson) {
-    throw new NotFoundError("Person");
-  }
-
-  await prisma.person.delete({
-    where: { id: idValidation.value },
-  });
-
-  console.log("✅ Person deleted:", existingPerson.name);
-  res.json({
-    success: true,
-    message: "Person deleted successfully",
-  });
-});
-
-/**
- * Search persons by name
- */
-const searchPersons = errorHandler(async (req, res) => {
-  const { query } = req.query;
-  const userId = req.user.id;
-
-  // Validate search query
-  const queryValidation = validateSearchQuery(query);
-  if (!queryValidation.isValid) {
-    throw new ValidationError(queryValidation.error);
-  }
-
-  const persons = await prisma.person.findMany({
-    where: {
-      userId,
-      OR: [
-        { name: { contains: queryValidation.value, mode: "insensitive" } },
-        { nameZh: { contains: queryValidation.value } },
-      ],
-    },
-    orderBy: { name: "asc" },
-  });
-
-  console.log(`✅ Found ${persons.length} matches for "${query}"`);
-  res.json({
-    success: true,
-    data: persons,
-    count: persons.length,
-  });
-});
-
-/**
- * Update a person's position in the family tree
- */
-const updatePersonPosition = errorHandler(async (req, res) => {
-  const { id } = req.params;
-  const userId = req.user.id;
-  const { positionX, positionY } = req.body;
-
-  // Validate person ID
-  const idValidation = validatePersonId(id);
-  if (!idValidation.isValid) {
-    throw new ValidationError(idValidation.error);
-  }
-
-  // Check if person exists and belongs to user
-  const existingPerson = await prisma.person.findFirst({
-    where: {
-      id: idValidation.value,
-      userId,
-    },
-  });
-
-  if (!existingPerson) {
-    throw new NotFoundError("Person");
-  }
-
-  // Update only position fields
-  const person = await prisma.person.update({
-    where: { id: idValidation.value },
-    data: {
-      positionX: parseFloat(positionX),
-      positionY: parseFloat(positionY),
-    },
-  });
-
-  res.json({
-    success: true,
-    data: person,
-  });
-});
-
-/**
- * Save layout data
- */
-const saveLayout = errorHandler(async (req, res) => {
-  const { positions } = req.body;
-  const userId = req.user.id;
-
-  if (!positions || typeof positions !== 'object') {
-    throw new ValidationError('Invalid positions data');
-  }
-
-  // Update or create layout data
-  const layout = await prisma.layoutData.upsert({
-    where: { userId },
-    update: { positions },
-    create: {
-      userId,
-      positions
+    if (!existingPerson) {
+      return res.status(404).json({ message: "Person not found" });
     }
-  });
 
-  res.status(200).json({
-    success: true,
-    message: 'Layout saved successfully',
-    layout
-  });
-});
+    // Delete related relationships first to avoid foreign key constraints
+    await prisma.relationship.deleteMany({
+      where: {
+        OR: [{ fromId: id }, { toId: id }],
+      },
+    });
 
-/**
- * Get layout data
- */
-const getLayout = errorHandler(async (req, res) => {
-  const userId = req.user.id;
+    // Delete person
+    await prisma.person.delete({
+      where: { id },
+    });
 
-  const layout = await prisma.layoutData.findUnique({
-    where: { userId }
-  });
-
-  if (!layout) {
-    return res.status(200).json({ positions: {} });
+    res.status(200).json({ message: "Person deleted successfully" });
+  } catch (error) {
+    next(error);
   }
-
-  res.status(200).json({
-    success: true,
-    positions: layout.positions
-  });
-});
+};
 
 module.exports = {
+  getAllPersons,
+  getPersonById,
   createPerson,
-  getPersons: getAllPersons,
-  getPerson: getPersonById,
   updatePerson,
   deletePerson,
-  searchPersons,
-  updatePersonPosition,
-  saveLayout,
-  getLayout
 };

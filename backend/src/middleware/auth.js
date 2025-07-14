@@ -1,39 +1,35 @@
 const jwt = require("jsonwebtoken");
-const { errorHandler, AuthError } = require("../utils/errorHandler");
+const dotenv = require("dotenv");
+
+// Load environment variables
+dotenv.config();
 
 /**
- * Authentication middleware
- * Verifies JWT token and attaches user to request
+ * Authentication middleware to verify JWT tokens
  */
-const auth = errorHandler(async (req, res, next) => {
+const authenticate = (req, res, next) => {
   try {
-    // Get token from header
-    const authHeader = req.header('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      throw new AuthError('No token provided');
+    // Get token from Authorization header
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ message: "Authentication required" });
     }
 
-    const token = authHeader.replace('Bearer ', '');
-    
-    if (!process.env.JWT_SECRET) {
-      console.error('JWT_SECRET not configured');
-      throw new AuthError('Authentication configuration error');
-    }
+    const token = authHeader.split(" ")[1];
 
-    try {
-      // Verify token
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      req.user = decoded;
-      console.log("🔐 User authenticated:", decoded.email);
-      next();
-    } catch (err) {
-      console.error('Token verification failed:', err.message);
-      throw new AuthError('Invalid token');
-    }
+    // Verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    // Add user ID to request
+    req.userId = decoded.userId;
+    req.userEmail = decoded.email;
+
+    next();
   } catch (error) {
-    console.error("❌ Auth middleware error:", error.message);
-    next(error);
+    console.error("Auth Middleware Error:", error);
+    return res.status(401).json({ message: "Invalid or expired token" });
   }
-});
+};
 
-module.exports = auth;
+module.exports = authenticate;
