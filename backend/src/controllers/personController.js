@@ -139,10 +139,30 @@ const deletePerson = async (req, res, next) => {
   }
 };
 
+/**
+ * Delete all persons for the current user
+ */
+const deleteAllPersons = async (req, res, next) => {
+  try {
+    // Delete all relationships first to avoid foreign key constraints
+    await prisma.relationship.deleteMany({});
+
+    // Delete all persons
+    await prisma.person.deleteMany({});
+
+    res
+      .status(200)
+      .json({ message: "All family members deleted successfully" });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getAllPersons,
   getPersonById,
   createPerson,
   updatePerson,
   deletePerson,
+  deleteAllPersons,
 };

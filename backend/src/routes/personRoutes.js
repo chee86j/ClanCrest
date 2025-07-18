@@ -6,6 +6,9 @@ const router = express.Router();
 // GET all persons
 router.get("/", personController.getAllPersons);
 
+// DELETE all persons
+router.delete("/all", personController.deleteAllPersons);
+
 // GET a specific person by ID
 router.get("/:id", personController.getPersonById);
 

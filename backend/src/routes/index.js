@@ -3,6 +3,7 @@ const personRoutes = require("./personRoutes");
 const relationshipRoutes = require("./relationshipRoutes");
 const kinshipRoutes = require("./kinshipRoutes");
 const authRoutes = require("./authRoutes");
+const familyTreeRoutes = require("./familyTreeRoutes");
 
 const router = express.Router();
 
@@ -11,6 +12,7 @@ router.use("/persons", personRoutes);
 router.use("/relationships", relationshipRoutes);
 router.use("/kinship", kinshipRoutes);
 router.use("/auth", authRoutes);
+router.use("/family-tree", familyTreeRoutes);
 
 // API documentation route
 router.get("/docs", (req, res) => {
@@ -38,6 +40,11 @@ router.get("/docs", (req, res) => {
       auth: {
         POST: "/api/auth/google - Authenticate with Google OAuth",
         GET: "/api/auth/me - Get current user (requires authentication)",
+      },
+      familyTree: {
+        GET: "/api/family-tree - Get family tree data for frontend visualization",
+        POST: "/api/family-tree - Save family tree data from frontend",
+        GET_STATS: "/api/family-tree/stats - Get family tree statistics",
       },
     },
   });

@@ -76,12 +76,13 @@ const createRelationship = async (req, res, next) => {
       return res.status(404).json({ message: "One or both persons not found" });
     }
 
-    // Check for existing relationship
+    // Check for existing relationship in both directions
     const existingRelationship = await prisma.relationship.findFirst({
       where: {
-        fromId,
-        toId,
-        type,
+        OR: [
+          { fromId, toId, type },
+          { fromId: toId, toId: fromId, type },
+        ],
       },
     });
 
@@ -102,49 +103,23 @@ const createRelationship = async (req, res, next) => {
       },
     });
 
-    // If type is 'spouse', create reciprocal relationship
-    if (type === "spouse") {
-      await prisma.relationship.create({
-        data: {
-          fromId: toId,
-          toId: fromId,
-          type: "spouse",
-        },
-      });
-    }
-
-    // If type is 'parent', create reciprocal 'child' relationship
+    // Create reciprocal relationship based on type
+    let reciprocalType = type;
     if (type === "parent") {
-      await prisma.relationship.create({
-        data: {
-          fromId: toId,
-          toId: fromId,
-          type: "child",
-        },
-      });
+      reciprocalType = "child";
+    } else if (type === "child") {
+      reciprocalType = "parent";
     }
+    // For spouse and sibling, the reciprocal type is the same
 
-    // If type is 'child', create reciprocal 'parent' relationship
-    if (type === "child") {
-      await prisma.relationship.create({
-        data: {
-          fromId: toId,
-          toId: fromId,
-          type: "parent",
-        },
-      });
-    }
-
-    // If type is 'sibling', create reciprocal 'sibling' relationship
-    if (type === "sibling") {
-      await prisma.relationship.create({
-        data: {
-          fromId: toId,
-          toId: fromId,
-          type: "sibling",
-        },
-      });
-    }
+    // Create reciprocal relationship
+    await prisma.relationship.create({
+      data: {
+        fromId: toId,
+        toId: fromId,
+        type: reciprocalType,
+      },
+    });
 
     res.status(201).json(newRelationship);
   } catch (error) {

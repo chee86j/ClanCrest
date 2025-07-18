@@ -1,156 +1,252 @@
-# ClanCrest - Family Tree Visualization
+# ClanCrest - Family Tree Application
 
-ClanCrest is a comprehensive family tree visualization application that allows users to create, manage, and explore family relationships with multilingual kinship intelligence.
-
-## Features
-
-- **Interactive Family Tree**: Visualize family connections using react-d3-tree with elbow connectors
-- **Person Management**: Create, edit, and delete family members
-- **Relationship Management**: Define various relationship types (parent, child, spouse, sibling)
-- **Kinship Intelligence**: Find relationships between any two family members
-- **Multilingual Support**: View kinship terms in English and Mandarin Chinese
-- **AI Chatbot**: Ask questions about family relationships (requires OpenAI API key)
-- **Export Functionality**: Save your family tree as PDF
-
-## Tech Stack
-
-### Frontend
-
-- React.js
-- Tailwind CSS
-- react-d3-tree
-- Axios for API communication
-- HTML-to-Image & jsPDF for exports
-
-### Backend
-
-- Node.js
-- Express.js
-- Prisma ORM
-- SQLite (development) / PostgreSQL (production)
-- OpenAI API integration (optional)
+A modern family tree visualization application with a React-based frontend and Express.js backend with PostgreSQL database integration.
 
 ## Project Structure
 
 ```
-clancrest/
-├── backend/
-│   ├── prisma/
-│   │   ├── schema.prisma
+ClanCrest/
+├── frontend/                 # Family chart visualization library
+│   ├── dist/                # Built library files
+│   ├── examples/            # Example implementations
+│   │   └── clancrest-integration/  # Backend integration example
+│   └── src/                 # Source code for the family chart library
+├── backend/                 # Express.js API server
 │   ├── src/
-│   │   ├── controllers/
-│   │   ├── routes/
-│   │   ├── utils/
-│   │   ├── app.js
-│   │   └── server.js
-├── frontend/
-│   ├── src/
-│   │   ├── components/
-│   │   ├── pages/
-│   │   ├── services/
-│   │   ├── utils/
-│   │   └── main.jsx
-├── .env
-└── README.md
+│   │   ├── controllers/     # API controllers
+│   │   ├── routes/          # API routes
+│   │   ├── middleware/      # Express middleware
+│   │   └── utils/           # Utility functions
+│   └── prisma/              # Database schema and migrations
+└── assets/                  # Static assets
 ```
 
-## Getting Started
+## Features
+
+### Frontend (Family Chart Library)
+
+- **Interactive Family Tree Visualization**: D3.js-based family tree charts
+- **Multiple Card Types**: SVG and HTML card implementations
+- **Customizable Styling**: Extensive CSS customization options
+- **Responsive Design**: Works on desktop and mobile devices
+- **Real-time Updates**: Dynamic tree updates and animations
+
+### Backend (Express.js API)
+
+- **RESTful API**: Complete CRUD operations for persons and relationships
+- **PostgreSQL Database**: Prisma ORM with PostgreSQL
+- **Authentication**: Google OAuth integration
+- **Kinship Analysis**: AI-powered relationship analysis
+- **Family Tree Data**: Specialized endpoints for frontend integration
+
+## Quick Start
 
 ### Prerequisites
 
 - Node.js (v16 or higher)
-- npm or pnpm
-- SQLite (for development)
-- PostgreSQL (for production)
+- PostgreSQL database
+- npm or yarn
 
-### Installation
+### Backend Setup
 
-1. Clone the repository:
+1. **Install dependencies**:
 
-   ```
-   git clone https://github.com/yourusername/clancrest.git
-   cd clancrest
-   ```
-
-2. Install backend dependencies:
-
-   ```
+   ```bash
    cd backend
    npm install
    ```
 
-3. Set up environment variables:
-   Create a `.env` file in the backend directory with:
+2. **Set up environment variables**:
+   Create a `.env` file in the backend directory:
 
-   ```
-   NODE_ENV=development
-   PORT=3001
-   DATABASE_URL="file:./dev.db"
-   # Optional: OPENAI_API_KEY="your-api-key"
-   ```
-
-4. Initialize the database:
-
-   ```
-   npx prisma migrate dev --name init
+   ```env
+   DATABASE_URL="postgresql://username:password@localhost:5432/clancrest"
+   JWT_SECRET="your-jwt-secret"
+   GOOGLE_CLIENT_ID="your-google-client-id"
+   GOOGLE_CLIENT_SECRET="your-google-client-secret"
+   OPENAI_API_KEY="your-openai-api-key"
+   ALLOWED_ORIGINS="http://localhost:5173,http://localhost:8080"
    ```
 
-5. Install frontend dependencies:
+3. **Set up the database**:
 
-   ```
-   cd ../frontend
-   npm install
-   ```
-
-6. Create a `.env` file in the frontend directory with:
-   ```
-   VITE_API_URL=http://localhost:3001/api
+   ```bash
+   npx prisma migrate dev
+   npx prisma generate
    ```
 
-### Running the Application
-
-1. Start the backend server:
-
-   ```
-   cd backend
+4. **Start the backend server**:
+   ```bash
    npm run dev
    ```
+   The API will be available at `http://localhost:3000`
 
-2. In a separate terminal, start the frontend:
+### Frontend Setup
 
-   ```
+1. **Install dependencies**:
+
+   ```bash
    cd frontend
-   npm run dev
+   npm install
    ```
 
-3. Open your browser and navigate to `http://localhost:5173`
+2. **Build the library**:
 
-## Usage
+   ```bash
+   npm run build
+   ```
 
-1. **Creating a Family Tree**:
+3. **Start the development server**:
+   ```bash
+   npm run dev
+   ```
+   The frontend will be available at `http://localhost:5173`
 
-   - Start by adding a person using the "Add New Person" button
-   - Add more family members and establish relationships between them
+## API Endpoints
 
-2. **Finding Relationships**:
+### Family Tree Data
 
-   - Use the Kinship Finder to discover how two family members are related
-   - Toggle between English and Mandarin Chinese for relationship terms
+- `GET /api/family-tree` - Get family tree data for visualization
+- `POST /api/family-tree` - Save family tree data from frontend
+- `GET /api/family-tree/stats` - Get family tree statistics
 
-3. **Using the AI Chatbot**:
+### Persons
 
-   - Click "Show Chatbot" to access the AI assistant
-   - Ask questions like "What is John's relationship to Emma?"
+- `GET /api/persons` - Get all persons
+- `POST /api/persons` - Create a new person
+- `GET /api/persons/:id` - Get a specific person
+- `PATCH /api/persons/:id` - Update a person
+- `DELETE /api/persons/:id` - Delete a person
 
-4. **Exporting Your Tree**:
-   - Click "Export Tree" to save your family tree as a PDF
+### Relationships
+
+- `GET /api/relationships` - Get all relationships
+- `POST /api/relationships` - Create a new relationship
+- `GET /api/relationships/:id` - Get a specific relationship
+- `PATCH /api/relationships/:id` - Update a relationship
+- `DELETE /api/relationships/:id` - Delete a relationship
+
+### Kinship Analysis
+
+- `POST /api/kinship/find` - Find relationship between two persons
+- `POST /api/kinship/ask` - Ask AI about kinship relationships
+
+### Authentication
+
+- `POST /api/auth/google` - Authenticate with Google OAuth
+- `GET /api/auth/me` - Get current user (requires authentication)
+
+## Frontend Integration
+
+The frontend family chart library can be integrated with the backend API. Here's a basic example:
+
+```html
+<!DOCTYPE html>
+<html>
+  <head>
+    <link rel="stylesheet" href="frontend/dist/styles/family-chart.css" />
+  </head>
+  <body>
+    <div id="chart"></div>
+
+    <script src="frontend/dist/family-chart.js"></script>
+    <script>
+      // Initialize the chart
+      const chart = f3.createChart("#chart", []);
+      chart.setCard(f3.CardSvg);
+
+      // Load data from backend
+      async function loadFamilyTree() {
+        const response = await fetch("http://localhost:3000/api/family-tree");
+        const data = await response.json();
+        chart.updateData(data);
+      }
+
+      // Save data to backend
+      async function saveFamilyTree() {
+        const data = chart.store.getData();
+        await fetch("http://localhost:3000/api/family-tree", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ familyData: data }),
+        });
+      }
+
+      // Load initial data
+      loadFamilyTree();
+    </script>
+  </body>
+</html>
+```
+
+## Database Schema
+
+The application uses PostgreSQL with the following main tables:
+
+### Person
+
+- `id` (String, Primary Key)
+- `firstName` (String)
+- `lastName` (String)
+- `chineseName` (String, Optional)
+- `birthDate` (DateTime, Optional)
+- `gender` (String)
+- `createdAt` (DateTime)
+- `updatedAt` (DateTime)
+
+### Relationship
+
+- `id` (String, Primary Key)
+- `fromId` (String, Foreign Key to Person)
+- `toId` (String, Foreign Key to Person)
+- `type` (String: 'parent', 'child', 'spouse', 'sibling')
+- `createdAt` (DateTime)
+- `updatedAt` (DateTime)
+
+### User
+
+- `id` (String, Primary Key)
+- `email` (String, Unique)
+- `name` (String, Optional)
+- `googleId` (String, Unique)
+- `avatar` (String, Optional)
+- `createdAt` (DateTime)
+- `updatedAt` (DateTime)
+
+## Development
+
+### Backend Development
+
+- The backend uses Express.js with Prisma ORM
+- API routes are organized by feature (persons, relationships, etc.)
+- Middleware handles authentication and CORS
+- Controllers contain business logic
+- Utils contain helper functions like kinship analysis
+
+### Frontend Development
+
+- The frontend is a D3.js-based family tree visualization library
+- Built with modern JavaScript (ES6+)
+- Supports both SVG and HTML card types
+- Highly customizable with CSS and JavaScript
+- Includes comprehensive examples and documentation
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the ISC License.
 
-## Acknowledgments
+## Support
 
-- [react-d3-tree](https://github.com/bkrem/react-d3-tree) for the tree visualization
-- [Tailwind CSS](https://tailwindcss.com/) for styling
-- [OpenAI](https://openai.com/) for the AI chatbot capabilities
+For support and questions:
+
+- Check the examples in the `frontend/examples` directory
+- Review the API documentation at `http://localhost:3000/api/docs`
+- Open an issue on GitHub
