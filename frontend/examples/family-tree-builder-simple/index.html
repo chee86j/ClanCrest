@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simple Family Tree Builder</title>
+  <script src="https://unpkg.com/d3@6"></script>
+  <link rel="stylesheet" href="../../src/styles/family-chart.css">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+    }
+
+    .container {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      padding: 1rem 2rem;
+      text-align: center;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    }
+
+    .header h1 {
+      margin: 0;
+      color: #333;
+      font-size: 1.8rem;
+      font-weight: 600;
+    }
+
+    .header p {
+      margin: 0.5rem 0 0 0;
+      color: #666;
+      font-size: 1rem;
+    }
+
+    .content {
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .info-panel {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      padding: 1rem;
+      margin: 1rem;
+      border-radius: 10px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .info-panel h3 {
+      margin: 0 0 1rem 0;
+      color: #333;
+    }
+
+    .info-panel p {
+      margin: 0 0 0.5rem 0;
+      color: #666;
+      line-height: 1.5;
+    }
+
+    .code-example {
+      background: #f8f9fa;
+      border: 1px solid #e1e5e9;
+      border-radius: 8px;
+      padding: 1rem;
+      margin: 1rem 0;
+      font-family: 'Courier New', monospace;
+      font-size: 0.9rem;
+      overflow-x: auto;
+    }
+
+    @media (max-width: 768px) {
+      .header {
+        padding: 1rem;
+      }
+
+      .header h1 {
+        font-size: 1.4rem;
+      }
+
+      .header p {
+        font-size: 0.9rem;
+      }
+
+      .info-panel {
+        margin: 0.5rem;
+        padding: 0.75rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Simple Family Tree Builder</h1>
+      <p>Minimal configuration example</p>
+    </div>
+    
+    <div class="content">
+      <div class="info-panel">
+        <h3>How to Use</h3>
+        <p>This example shows the FamilyTreeBuilder component with minimal configuration. The component provides:</p>
+        <ul>
+          <li>Form-based person addition</li>
+          <li>Real-time tree visualization</li>
+          <li>Statistics dashboard</li>
+          <li>Save/load functionality</li>
+          <li>Export capabilities</li>
+        </ul>
+        
+        <div class="code-example">
+// Basic usage
+const builder = new FamilyTreeBuilder(container, {
+  api_base_url: 'http://localhost:3001/api',
+  auto_save: true
+})
+        </div>
+      </div>
+      
+      <div id="builder-container"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import FamilyTreeBuilder from '../../src/components/FamilyTreeBuilder.js'
+
+    // Initialize with minimal configuration
+    const container = document.getElementById('builder-container')
+    
+    const builder = new FamilyTreeBuilder(container, {
+      // Minimal configuration
+      api_base_url: 'http://localhost:3001/api',
+      auto_save: true,
+      
+      // Event callbacks for debugging
+      onPersonAdded: (person) => {
+        console.log('✅ Person added:', person)
+      },
+      
+      onTreeSaved: (result) => {
+        console.log('💾 Tree saved:', result)
+      },
+      
+      onError: (error) => {
+        console.error('❌ Builder error:', error)
+      }
+    })
+
+    // Store builder instance globally for debugging
+    window.simpleBuilder = builder
+  </script>
+</body>
+</html> 
