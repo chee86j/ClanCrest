@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ClanCrest - Add Family Member Demo</title>
+    <link rel="shortcut icon" type="image/svg" href="../logo.svg" />
+    <script src="https://unpkg.com/d3@6"></script>
+    <link rel="stylesheet" href="../../src/styles/family-chart.css" />
+    <link rel="stylesheet" href="../../src/components/AddFamilyMember.css" />
+    <style>
+      body {
+        margin: 0;
+        padding: 20px;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: #f5f5f5;
+      }
+
+      .demo-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+      }
+
+      .demo-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem;
+        text-align: center;
+      }
+
+      .demo-header h1 {
+        margin: 0 0 0.5rem 0;
+        font-size: 2rem;
+      }
+
+      .demo-header p {
+        margin: 0;
+        opacity: 0.9;
+      }
+
+      .demo-content {
+        display: flex;
+        min-height: 700px;
+      }
+
+      .chart-container {
+        flex: 1;
+        padding: 20px;
+        border-right: 1px solid #eee;
+        background: #fafafa;
+      }
+
+      .controls-container {
+        width: 400px;
+        padding: 20px;
+        background: white;
+      }
+
+      .section-title {
+        margin: 0 0 1rem 0;
+        font-size: 1.2rem;
+        color: #333;
+        border-bottom: 2px solid #667eea;
+        padding-bottom: 0.5rem;
+      }
+
+      .instructions {
+        background: #e3f2fd;
+        border: 1px solid #2196f3;
+        border-radius: 6px;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .instructions h3 {
+        margin: 0 0 0.5rem 0;
+        color: #1976d2;
+        font-size: 1rem;
+      }
+
+      .instructions ol {
+        margin: 0;
+        padding-left: 1.5rem;
+        color: #333;
+      }
+
+      .instructions li {
+        margin-bottom: 0.25rem;
+      }
+
+      .sample-data {
+        background: #f3e5f5;
+        border: 1px solid #9c27b0;
+        border-radius: 6px;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .sample-data h3 {
+        margin: 0 0 0.5rem 0;
+        color: #7b1fa2;
+        font-size: 1rem;
+      }
+
+      .sample-data button {
+        background: #9c27b0;
+        color: white;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        margin-right: 0.5rem;
+        margin-bottom: 0.5rem;
+      }
+
+      .sample-data button:hover {
+        background: #7b1fa2;
+      }
+
+      .tree-actions {
+        margin-bottom: 1.5rem;
+      }
+
+      .tree-actions button {
+        background: #667eea;
+        color: white;
+        border: none;
+        padding: 0.75rem 1rem;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        margin-right: 0.5rem;
+        margin-bottom: 0.5rem;
+        transition: all 0.3s ease;
+      }
+
+      .tree-actions button:hover {
+        background: #5a6fd8;
+        transform: translateY(-1px);
+      }
+
+      .tree-actions button.secondary {
+        background: #6c757d;
+      }
+
+      .tree-actions button.secondary:hover {
+        background: #5a6268;
+      }
+
+      .tree-actions button.success {
+        background: #28a745;
+      }
+
+      .tree-actions button.success:hover {
+        background: #218838;
+      }
+
+      .tree-actions button.warning {
+        background: #ffc107;
+        color: #212529;
+      }
+
+      .tree-actions button.warning:hover {
+        background: #e0a800;
+      }
+
+      @media (max-width: 768px) {
+        .demo-content {
+          flex-direction: column;
+        }
+
+        .chart-container {
+          border-right: none;
+          border-bottom: 1px solid #eee;
+        }
+
+        .controls-container {
+          width: auto;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="demo-container">
+      <div class="demo-header">
+        <h1>Add Family Member Component Demo</h1>
+        <p>Interactive family tree creation with modern UI components</p>
+      </div>
+
+      <div class="demo-content">
+        <div class="chart-container" id="chart-container">
+          <!-- Chart will be rendered here -->
+        </div>
+
+        <div class="controls-container">
+          <div class="instructions">
+            <h3>How to Use:</h3>
+            <ol>
+              <li>Load sample data or add a root person</li>
+              <li>Select a person from the dropdown</li>
+              <li>
+                Choose a relationship to add (father, mother, spouse, child)
+              </li>
+              <li>Fill out the form and submit</li>
+              <li>Watch the tree update in real-time!</li>
+            </ol>
+          </div>
+
+          <div class="sample-data">
+            <h3>Sample Data</h3>
+            <button id="load-sample-1">Load Simple Family</button>
+            <button id="load-sample-2">Load Extended Family</button>
+            <button id="clear-data">Clear All Data</button>
+          </div>
+
+          <div class="tree-actions">
+            <h3 class="section-title">Tree Actions</h3>
+            <button class="success" id="add-root-btn">Add Root Person</button>
+            <button class="secondary" id="save-tree-btn">Save Tree</button>
+            <button class="secondary" id="load-tree-btn">Load Tree</button>
+            <button class="warning" id="clear-tree-btn">Clear Tree</button>
+            <button class="secondary" id="show-data-btn">Show Data</button>
+          </div>
+          <pre
+            id="debug-output"
+            style="
+              background: #f8f8f8;
+              border: 1px solid #ccc;
+              padding: 1em;
+              overflow: auto;
+              max-height: 300px;
+            "
+          ></pre>
+
+          <div id="add-family-member-container">
+            <!-- AddFamilyMember component will be rendered here -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module">
+      import f3 from "../../src/index.js";
+      import { AddFamilyMember } from "../../src/components/AddFamilyMember.js";
+
+      // Initialize the family tree
+      let store, chart, addFamilyMember;
+
+      function init() {
+        // Create store
+        store = f3.createStore({
+          data: [],
+          node_separation: 250,
+          level_separation: 150,
+        });
+
+        // Create chart
+        chart = f3.d3Animation({
+          svg_selector: "#chart-container",
+          store: store,
+          card_dimensions: {
+            w: 220,
+            h: 70,
+            text_x: 75,
+            text_y: 15,
+            img_w: 60,
+            img_h: 60,
+            img_x: 5,
+            img_y: 5,
+          },
+          card_display: [
+            (d) => `${d.data["first name"] || ""} ${d.data["last name"] || ""}`,
+            (d) => d.data["birthday"] || "",
+          ],
+          card_edit: true,
+          node_update: f3.d3UpdateNode(),
+          link_update: f3.d3UpdateLink(),
+          link_in_turn: false,
+          callback: {
+            onCardClick: (d) => {
+              console.log("Card clicked:", d);
+            },
+          },
+        });
+
+        // Initialize AddFamilyMember component
+        const container = document.getElementById(
+          "add-family-member-container"
+        );
+        addFamilyMember = new AddFamilyMember(container, {
+          fields: [
+            {
+              id: "first name",
+              type: "text",
+              label: "First Name",
+              required: true,
+            },
+            {
+              id: "last name",
+              type: "text",
+              label: "Last Name",
+              required: true,
+            },
+            { id: "birthday", type: "date", label: "Birth Date" },
+            { id: "avatar", type: "url", label: "Avatar URL" },
+            { id: "notes", type: "textarea", label: "Notes" },
+          ],
+          addRelLabels: {
+            father: "Add Father",
+            mother: "Add Mother",
+            spouse: "Add Spouse",
+            son: "Add Son",
+            daughter: "Add Daughter",
+          },
+          onPersonAdded: (person) => {
+            console.log("Person added:", person);
+
+            // Ensure the tree has a root node
+            const data = store.getData();
+            if (data.length === 1) {
+              // If this is the first person, set them as root
+              store.setRoot(person.id);
+              console.log("Set root person:", person.id);
+              console.log(
+                "Current root:",
+                store.getRoot ? store.getRoot() : store.root
+              );
+            }
+
+            // Update the tree structure
+            store.updateTree({});
+
+            // Force a re-render of the chart
+            if (chart && chart.render) {
+              chart.render();
+            }
+
+            addFamilyMember.update();
+            console.log(
+              "Current store data:",
+              JSON.stringify(store.getData(), null, 2)
+            );
+            console.log(
+              "Current root:",
+              store.getRoot ? store.getRoot() : store.root
+            );
+          },
+          onPersonUpdated: (person) => {
+            console.log("Person updated:", person);
+
+            // Update the tree structure
+            store.updateTree({});
+
+            // Force a re-render of the chart
+            if (chart && chart.render) {
+              chart.render();
+            }
+
+            addFamilyMember.update();
+            console.log(
+              "Current store data:",
+              JSON.stringify(store.getData(), null, 2)
+            );
+            console.log(
+              "Current root:",
+              store.getRoot ? store.getRoot() : store.root
+            );
+          },
+          onPersonDeleted: (person) => {
+            console.log("Person deleted:", person);
+
+            // Update the tree structure
+            store.updateTree({});
+
+            // Force a re-render of the chart
+            if (chart && chart.render) {
+              chart.render();
+            }
+
+            addFamilyMember.update();
+            console.log(
+              "Current store data:",
+              JSON.stringify(store.getData(), null, 2)
+            );
+            console.log(
+              "Current root:",
+              store.getRoot ? store.getRoot() : store.root
+            );
+          },
+          onError: (error) => {
+            console.error("Error:", error);
+          },
+        });
+
+        // Set store and chart
+        addFamilyMember.setStoreAndChart(store, chart);
+
+        // Initial render with empty data
+        try {
+          chart.render();
+        } catch (error) {
+          console.warn(
+            "Initial chart render failed (expected with empty data):",
+            error
+          );
+        }
+
+        // Bind events
+        bindEvents();
+      }
+
+      function bindEvents() {
+        // Sample data buttons
+        document
+          .getElementById("load-sample-1")
+          .addEventListener("click", loadSampleData1);
+        document
+          .getElementById("load-sample-2")
+          .addEventListener("click", loadSampleData2);
+        document
+          .getElementById("clear-data")
+          .addEventListener("click", clearData);
+
+        // Tree action buttons
+        document
+          .getElementById("add-root-btn")
+          .addEventListener("click", handleAddRootPerson);
+        document
+          .getElementById("save-tree-btn")
+          .addEventListener("click", handleSaveTree);
+        document
+          .getElementById("load-tree-btn")
+          .addEventListener("click", handleLoadTree);
+        document
+          .getElementById("clear-tree-btn")
+          .addEventListener("click", handleClearTree);
+        document
+          .getElementById("show-data-btn")
+          .addEventListener("click", showData);
+      }
+
+      function loadSampleData1() {
+        const sampleData = [
+          {
+            id: "1",
+            data: {
+              "first name": "John",
+              "last name": "Smith",
+              birthday: "1980-05-15",
+              gender: "M",
+            },
+            rels: {
+              father: null,
+              mother: null,
+              spouses: [],
+              children: [],
+            },
+          },
+        ];
+
+        store.getData().length = 0;
+        store.getData().push(...sampleData);
+        store.updateTree({});
+        addFamilyMember.update();
+
+        console.log("Loaded simple family data");
+      }
+
+      function loadSampleData2() {
+        const sampleData = [
+          {
+            id: "1",
+            data: {
+              "first name": "John",
+              "last name": "Smith",
+              birthday: "1980-05-15",
+              gender: "M",
+            },
+            rels: {
+              father: "2",
+              mother: "3",
+              spouses: ["4"],
+              children: ["5", "6"],
+            },
+          },
+          {
+            id: "2",
+            data: {
+              "first name": "Robert",
+              "last name": "Smith",
+              birthday: "1950-03-20",
+              gender: "M",
+            },
+            rels: {
+              father: null,
+              mother: null,
+              spouses: ["3"],
+              children: ["1"],
+            },
+          },
+          {
+            id: "3",
+            data: {
+              "first name": "Mary",
+              "last name": "Johnson",
+              birthday: "1952-07-10",
+              gender: "F",
+            },
+            rels: {
+              father: null,
+              mother: null,
+              spouses: ["2"],
+              children: ["1"],
+            },
+          },
+          {
+            id: "4",
+            data: {
+              "first name": "Sarah",
+              "last name": "Smith",
+              birthday: "1982-09-25",
+              gender: "F",
+            },
+            rels: {
+              father: null,
+              mother: null,
+              spouses: ["1"],
+              children: ["5", "6"],
+            },
+          },
+          {
+            id: "5",
+            data: {
+              "first name": "Emma",
+              "last name": "Smith",
+              birthday: "2010-12-03",
+              gender: "F",
+            },
+            rels: {
+              father: "1",
+              mother: "4",
+              spouses: [],
+              children: [],
+            },
+          },
+          {
+            id: "6",
+            data: {
+              "first name": "James",
+              "last name": "Smith",
+              birthday: "2012-08-18",
+              gender: "M",
+            },
+            rels: {
+              father: "1",
+              mother: "4",
+              spouses: [],
+              children: [],
+            },
+          },
+        ];
+
+        store.getData().length = 0;
+        store.getData().push(...sampleData);
+        store.updateTree({});
+        addFamilyMember.update();
+
+        console.log("Loaded extended family data");
+      }
+
+      function clearData() {
+        store.getData().length = 0;
+        store.updateTree({});
+        addFamilyMember.update();
+        console.log("Cleared all data");
+      }
+
+      function handleAddRootPerson() {
+        const data = store.getData();
+        if (data.length === 0) {
+          console.log("No data to set as root");
+          return;
+        }
+
+        const rootPerson = data[0];
+        store.setRoot(rootPerson.id);
+        console.log("Set root person:", rootPerson);
+      }
+
+      function handleSaveTree() {
+        const data = store.getData();
+        const treeData = JSON.stringify(data, null, 2);
+
+        const blob = new Blob([treeData], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "family-tree.json";
+        a.click();
+        URL.revokeObjectURL(url);
+
+        console.log("Tree saved successfully");
+      }
+
+      function handleLoadTree() {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = ".json";
+        input.onchange = (event) => {
+          const file = event.target.files[0];
+          if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              try {
+                const data = JSON.parse(e.target.result);
+                store.getData().length = 0;
+                store.getData().push(...data);
+                store.updateTree({});
+                addFamilyMember.update();
+                console.log("Tree loaded successfully");
+              } catch (error) {
+                console.error("Error loading tree:", error);
+              }
+            };
+            reader.readAsText(file);
+          }
+        };
+        input.click();
+      }
+
+      function handleClearTree() {
+        if (confirm("Are you sure you want to clear the entire tree?")) {
+          store.getData().length = 0;
+          store.updateTree({});
+          addFamilyMember.update();
+          console.log("Tree cleared successfully");
+        }
+      }
+
+      function showData() {
+        const root = store.getRoot ? store.getRoot() : store.root;
+        const data = store.getData();
+        const output =
+          "Current root: " +
+          root +
+          "\n\nCurrent data:\n" +
+          JSON.stringify(data, null, 2);
+        alert(output);
+        console.log(output);
+        document.getElementById("debug-output").textContent = output;
+      }
+
+      // Initialize when DOM is ready
+      document.addEventListener("DOMContentLoaded", init);
+    </script>
+  </body>
+</html>

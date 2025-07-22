@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ClanCrest - Create Tree Demo</title>
+    <link rel="shortcut icon" type="image/svg" href="../logo.svg" />
+    <script src="https://unpkg.com/d3@6"></script>
+    <link rel="stylesheet" href="../../src/styles/family-chart.css" />
+    <style>
+      body {
+        margin: 0;
+        padding: 20px;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: #f5f5f5;
+      }
+
+      .demo-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+      }
+
+      .demo-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem;
+        text-align: center;
+      }
+
+      .demo-header h1 {
+        margin: 0 0 0.5rem 0;
+        font-size: 2rem;
+      }
+
+      .demo-header p {
+        margin: 0;
+        opacity: 0.9;
+      }
+
+      .demo-content {
+        display: flex;
+        min-height: 600px;
+      }
+
+      .chart-container {
+        flex: 1;
+        padding: 20px;
+        border-right: 1px solid #eee;
+      }
+
+      .controls-container {
+        width: 300px;
+        padding: 20px;
+        background: #fafafa;
+      }
+
+      .control-section {
+        margin-bottom: 2rem;
+      }
+
+      .control-section h3 {
+        margin: 0 0 1rem 0;
+        color: #333;
+        font-size: 1.1rem;
+      }
+
+      .btn {
+        display: inline-block;
+        padding: 0.75rem 1.5rem;
+        margin: 0.25rem;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        text-decoration: none;
+        transition: all 0.3s ease;
+      }
+
+      .btn-primary {
+        background: #667eea;
+        color: white;
+      }
+
+      .btn-primary:hover {
+        background: #5a6fd8;
+      }
+
+      .btn-secondary {
+        background: #6c757d;
+        color: white;
+      }
+
+      .btn-secondary:hover {
+        background: #5a6268;
+      }
+
+      .btn-success {
+        background: #28a745;
+        color: white;
+      }
+
+      .btn-success:hover {
+        background: #218838;
+      }
+
+      .btn-warning {
+        background: #ffc107;
+        color: #212529;
+      }
+
+      .btn-warning:hover {
+        background: #e0a800;
+      }
+
+      .btn-sm {
+        padding: 0.5rem 1rem;
+        font-size: 0.8rem;
+      }
+
+      .form-group {
+        margin-bottom: 1rem;
+      }
+
+      .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+        color: #333;
+      }
+
+      .form-group input,
+      .form-group select,
+      .form-group textarea {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 0.9rem;
+      }
+
+      .form-group textarea {
+        resize: vertical;
+        min-height: 60px;
+      }
+
+      .status {
+        padding: 0.75rem;
+        margin: 1rem 0;
+        border-radius: 4px;
+        font-size: 0.9rem;
+      }
+
+      .status.success {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+      }
+
+      .status.error {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+      }
+
+      .status.info {
+        background: #d1ecf1;
+        color: #0c5460;
+        border: 1px solid #bee5eb;
+      }
+
+      @media (max-width: 768px) {
+        .demo-content {
+          flex-direction: column;
+        }
+
+        .chart-container {
+          border-right: none;
+          border-bottom: 1px solid #eee;
+        }
+
+        .controls-container {
+          width: auto;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="demo-container">
+      <div class="demo-header">
+        <h1>Create Tree Demo</h1>
+        <p>Interactive family tree creation with form-based person addition</p>
+      </div>
+
+      <div class="demo-content">
+        <div class="chart-container" id="chart-container">
+          <!-- Chart will be rendered here -->
+        </div>
+
+        <div class="controls-container">
+          <div class="control-section">
+            <h3>Add Person</h3>
+            <form id="add-person-form">
+              <div class="form-group">
+                <label for="first-name">First Name *</label>
+                <input type="text" id="first-name" name="first_name" required />
+              </div>
+              <div class="form-group">
+                <label for="last-name">Last Name *</label>
+                <input type="text" id="last-name" name="last_name" required />
+              </div>
+              <div class="form-group">
+                <label for="gender">Gender</label>
+                <select id="gender" name="gender">
+                  <option value="">Select Gender</option>
+                  <option value="M">Male</option>
+                  <option value="F">Female</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="birth-date">Birth Date</label>
+                <input type="date" id="birth-date" name="birth_date" />
+              </div>
+              <div class="form-group">
+                <label for="avatar-url">Avatar URL</label>
+                <input
+                  type="url"
+                  id="avatar-url"
+                  name="avatar"
+                  placeholder="https://example.com/avatar.jpg"
+                />
+              </div>
+              <div class="form-group">
+                <label for="notes">Notes</label>
+                <textarea id="notes" name="notes" rows="3"></textarea>
+              </div>
+              <button type="submit" class="btn btn-primary btn-sm">
+                Add Person
+              </button>
+            </form>
+          </div>
+
+          <div class="control-section">
+            <h3>Quick Actions</h3>
+            <button class="btn btn-secondary btn-sm" id="add-root-btn">
+              Add Root Person
+            </button>
+            <button class="btn btn-secondary btn-sm" id="add-parents-btn">
+              Add Parents
+            </button>
+            <button class="btn btn-secondary btn-sm" id="add-spouse-btn">
+              Add Spouse
+            </button>
+            <button class="btn btn-secondary btn-sm" id="add-child-btn">
+              Add Child
+            </button>
+          </div>
+
+          <div class="control-section">
+            <h3>Tree Actions</h3>
+            <button class="btn btn-success btn-sm" id="save-tree-btn">
+              Save Tree
+            </button>
+            <button class="btn btn-secondary btn-sm" id="load-tree-btn">
+              Load Tree
+            </button>
+            <button class="btn btn-warning btn-sm" id="clear-tree-btn">
+              Clear Tree
+            </button>
+          </div>
+
+          <div id="status-container">
+            <!-- Status messages will appear here -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module">
+      import f3 from "../../src/index.js";
+
+      // Initialize the family tree
+      let store, chart;
+
+      function init() {
+        // Create store
+        store = f3.createStore({
+          data: [],
+          node_separation: 250,
+          level_separation: 150,
+        });
+
+        // Create chart
+        chart = f3.d3Animation({
+          svg_selector: "#chart-container",
+          store: store,
+          card_dimensions: {
+            w: 220,
+            h: 70,
+            text_x: 75,
+            text_y: 15,
+            img_w: 60,
+            img_h: 60,
+            img_x: 5,
+            img_y: 5,
+          },
+          card_display: [
+            (d) => `${d.data["first name"] || ""} ${d.data["last name"] || ""}`,
+            (d) => d.data["birthday"] || "",
+          ],
+          card_edit: true,
+          node_update: f3.d3UpdateNode(),
+          link_update: f3.d3UpdateLink(),
+          link_in_turn: false,
+          callback: {
+            onCardClick: (d) => {
+              console.log("Card clicked:", d);
+              showStatus(
+                `Clicked on: ${d.data["first name"]} ${d.data["last name"]}`,
+                "info"
+              );
+            },
+          },
+        });
+
+        // Initial render
+        chart.render();
+
+        // Bind events
+        bindEvents();
+      }
+
+      function bindEvents() {
+        // Form submission
+        const addPersonForm = document.getElementById("add-person-form");
+        addPersonForm.addEventListener("submit", handleAddPerson);
+
+        // Quick action buttons
+        document
+          .getElementById("add-root-btn")
+          .addEventListener("click", handleAddRootPerson);
+        document
+          .getElementById("add-parents-btn")
+          .addEventListener("click", handleAddParents);
+        document
+          .getElementById("add-spouse-btn")
+          .addEventListener("click", handleAddSpouse);
+        document
+          .getElementById("add-child-btn")
+          .addEventListener("click", handleAddChild);
+
+        // Tree action buttons
+        document
+          .getElementById("save-tree-btn")
+          .addEventListener("click", handleSaveTree);
+        document
+          .getElementById("load-tree-btn")
+          .addEventListener("click", handleLoadTree);
+        document
+          .getElementById("clear-tree-btn")
+          .addEventListener("click", handleClearTree);
+      }
+
+      function handleAddPerson(event) {
+        event.preventDefault();
+
+        const formData = new FormData(event.target);
+        const personData = {
+          id: generateId(),
+          data: {
+            "first name": formData.get("first_name") || "",
+            "last name": formData.get("last_name") || "",
+            birthday: formData.get("birth_date") || "",
+            gender: formData.get("gender") || "",
+            avatar: formData.get("avatar") || "",
+            notes: formData.get("notes") || "",
+          },
+          rels: {
+            father: null,
+            mother: null,
+            spouses: [],
+            children: [],
+          },
+        };
+
+        // Add to store
+        store.getData().push(personData);
+        store.updateTree({});
+
+        // Clear form
+        event.target.reset();
+        showStatus("Person added successfully!", "success");
+      }
+
+      function handleAddRootPerson() {
+        const data = store.getData();
+        if (data.length === 0) {
+          showStatus("Please add a person first using the form above", "info");
+          return;
+        }
+
+        // Set the first person as root
+        const rootPerson = data[0];
+        store.setRoot(rootPerson.id);
+        showStatus("Root person set successfully!", "success");
+      }
+
+      function handleAddParents() {
+        const data = store.getData();
+        if (data.length === 0) {
+          showStatus("Please add a person first", "info");
+          return;
+        }
+
+        // Find a person without parents
+        const personWithoutParents = data.find(
+          (p) => !p.rels.father && !p.rels.mother
+        );
+        if (!personWithoutParents) {
+          showStatus("All persons have parents assigned", "info");
+          return;
+        }
+
+        // Create father
+        const father = {
+          id: generateId(),
+          data: {
+            "first name": "Father",
+            "last name": personWithoutParents.data["last name"],
+            gender: "M",
+          },
+          rels: {
+            father: null,
+            mother: null,
+            spouses: [],
+            children: [personWithoutParents.id],
+          },
+        };
+
+        // Create mother
+        const mother = {
+          id: generateId(),
+          data: {
+            "first name": "Mother",
+            "last name": personWithoutParents.data["last name"],
+            gender: "F",
+          },
+          rels: {
+            father: null,
+            mother: null,
+            spouses: [],
+            children: [personWithoutParents.id],
+          },
+        };
+
+        // Update relationships
+        personWithoutParents.rels.father = father.id;
+        personWithoutParents.rels.mother = mother.id;
+
+        // Add to store
+        store.getData().push(father, mother);
+        store.updateTree({});
+
+        showStatus("Parents added successfully!", "success");
+      }
+
+      function handleAddSpouse() {
+        const data = store.getData();
+        if (data.length === 0) {
+          showStatus("Please add a person first", "info");
+          return;
+        }
+
+        // Find a person without a spouse
+        const personWithoutSpouse = data.find(
+          (p) => p.rels.spouses.length === 0
+        );
+        if (!personWithoutSpouse) {
+          showStatus("All persons have spouses assigned", "info");
+          return;
+        }
+
+        // Create spouse
+        const spouse = {
+          id: generateId(),
+          data: {
+            "first name": "Spouse",
+            "last name": personWithoutSpouse.data["last name"],
+            gender: personWithoutSpouse.data.gender === "M" ? "F" : "M",
+          },
+          rels: {
+            father: null,
+            mother: null,
+            spouses: [personWithoutSpouse.id],
+            children: [],
+          },
+        };
+
+        // Update relationships
+        personWithoutSpouse.rels.spouses.push(spouse.id);
+
+        // Add to store
+        store.getData().push(spouse);
+        store.updateTree({});
+
+        showStatus("Spouse added successfully!", "success");
+      }
+
+      function handleAddChild() {
+        const data = store.getData();
+        if (data.length === 0) {
+          showStatus("Please add a person first", "info");
+          return;
+        }
+
+        // Find a person without children
+        const personWithoutChildren = data.find(
+          (p) => p.rels.children.length === 0
+        );
+        if (!personWithoutChildren) {
+          showStatus("All persons have children assigned", "info");
+          return;
+        }
+
+        // Create child
+        const child = {
+          id: generateId(),
+          data: {
+            "first name": "Child",
+            "last name": personWithoutChildren.data["last name"],
+            gender: Math.random() > 0.5 ? "M" : "F",
+          },
+          rels: {
+            father:
+              personWithoutChildren.data.gender === "M"
+                ? personWithoutChildren.id
+                : null,
+            mother:
+              personWithoutChildren.data.gender === "F"
+                ? personWithoutChildren.id
+                : null,
+            spouses: [],
+            children: [],
+          },
+        };
+
+        // Update relationships
+        personWithoutChildren.rels.children.push(child.id);
+
+        // Add to store
+        store.getData().push(child);
+        store.updateTree({});
+
+        showStatus("Child added successfully!", "success");
+      }
+
+      function handleSaveTree() {
+        const data = store.getData();
+        const treeData = JSON.stringify(data, null, 2);
+
+        // Create download link
+        const blob = new Blob([treeData], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "family-tree.json";
+        a.click();
+        URL.revokeObjectURL(url);
+
+        showStatus("Tree saved successfully!", "success");
+      }
+
+      function handleLoadTree() {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = ".json";
+        input.onchange = (event) => {
+          const file = event.target.files[0];
+          if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              try {
+                const data = JSON.parse(e.target.result);
+                store.getData().length = 0;
+                store.getData().push(...data);
+                store.updateTree({});
+                showStatus("Tree loaded successfully!", "success");
+              } catch (error) {
+                showStatus("Error loading tree: " + error.message, "error");
+              }
+            };
+            reader.readAsText(file);
+          }
+        };
+        input.click();
+      }
+
+      function handleClearTree() {
+        if (confirm("Are you sure you want to clear the entire tree?")) {
+          store.getData().length = 0;
+          store.updateTree({});
+          showStatus("Tree cleared successfully!", "success");
+        }
+      }
+
+      function generateId() {
+        return "id_" + Math.random().toString(36).substr(2, 9);
+      }
+
+      function showStatus(message, type = "info") {
+        const container = document.getElementById("status-container");
+        const statusDiv = document.createElement("div");
+        statusDiv.className = `status ${type}`;
+        statusDiv.textContent = message;
+
+        container.appendChild(statusDiv);
+
+        // Remove after 5 seconds
+        setTimeout(() => {
+          if (statusDiv.parentNode) {
+            statusDiv.parentNode.removeChild(statusDiv);
+          }
+        }, 5000);
+      }
+
+      // Initialize when DOM is ready
+      document.addEventListener("DOMContentLoaded", init);
+    </script>
+  </body>
+</html>
