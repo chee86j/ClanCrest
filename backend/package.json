@@ -1,34 +1,18 @@
 {
   "name": "clancrest-backend",
   "version": "1.0.0",
-  "description": "Backend API for ClanCrest family tree application",
-  "main": "src/server.js",
+  "private": true,
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "nodemon src/server.js",
-    "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev",
-    "prisma:studio": "prisma studio"
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js"
   },
-  "keywords": [
-    "family-tree",
-    "genealogy",
-    "kinship",
-    "express",
-    "prisma"
-  ],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
+    "express": "^4.18.2",
+    "prisma": "^5.10.2",
     "@prisma/client": "^5.10.2",
-    "axios": "^1.6.7",
-    "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
-    "express": "^4.18.3",
-    "jsonwebtoken": "^9.0.2"
+    "sqlite3": "^5.1.6"
   },
   "devDependencies": {
-    "nodemon": "^3.1.0",
-    "prisma": "^5.10.2"
+    "nodemon": "^3.0.2"
   }
-}
+} 
